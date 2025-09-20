@@ -10,8 +10,7 @@
 7. [Configuration](#configuration)
 8. [Monitoring](#monitoring)
 9. [Troubleshooting](#troubleshooting)
-10. [Best Practices](#best-practices)
-11. [Support](#support)
+10. [Support](#support)
 
 ## Overview
 
