@@ -410,56 +410,6 @@ SELECT pg_reload_conf();
 -- Check logs for detailed TTL activity
 ```
 
-## Best Practices
-
-### 1. Choose Appropriate Expiry Times
-
-```sql
--- Good examples:
-SELECT ttl_create_index('sessions', 'created_at', 3600);     -- 1 hour
-SELECT ttl_create_index('logs', 'created_at', 2592000);     -- 30 days
-SELECT ttl_create_index('cache', 'expires_at', 0);          -- Immediate expiry
-
--- Avoid very short intervals (less than 60 seconds)
--- The background worker runs every minute by default
-```
-
-### 2. Use Appropriate Column Types
-
-```sql
--- Recommended column types:
-created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()  -- Best choice
-updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()  -- Good for updates
-expires_at TIMESTAMPTZ NOT NULL                -- For explicit expiry
-created_date DATE NOT NULL DEFAULT CURRENT_DATE -- For daily cleanup
-```
-
-### 3. Monitor Performance
-
-```sql
--- Check table sizes before/after cleanup
-SELECT 
-    schemaname,
-    tablename,
-    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
-FROM pg_tables 
-WHERE tablename IN ('user_sessions', 'app_logs', 'cache_entries');
-```
-
-### 4. Backup Before Major Changes
-
-```sql
--- Always backup before modifying TTL settings
-pg_dump your_database > backup_before_ttl_changes.sql
-```
-
-### 5. Test in Development First
-
-```sql
--- Test TTL functionality in development
-SELECT ttl_create_index('test_table', 'created_at', 60); -- 1 minute for testing
--- Insert test data and verify cleanup
-```
 
 ## Support
 
