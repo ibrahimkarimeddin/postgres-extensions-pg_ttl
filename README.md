@@ -335,12 +335,6 @@ WHERE active = true
 ORDER BY last_run DESC;
 ```
 
-### View PostgreSQL Logs
-
-```bash
-# Check PostgreSQL logs for TTL activity
-sudo tail -f /var/log/postgresql/postgresql-12-main.log | grep TTL
-```
 
 ## Troubleshooting
 
@@ -356,7 +350,8 @@ sudo tail -f /var/log/postgresql/postgresql-12-main.log | grep TTL
 ls -la /usr/share/postgresql/12/extension/pg_ttl_index*
 
 # Reinstall if missing
-sudo make install
+pgxn install pg_ttl_index
+
 ```
 
 #### 2. Background Worker Not Starting
