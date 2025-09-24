@@ -2,10 +2,8 @@
   "name": "pg_ttl_index",
   "abstract": "Automatic Time-To-Live (TTL) data expiration for PostgreSQL tables",
   "description": "A high-performance PostgreSQL extension that provides automatic Time-To-Live (TTL) functionality for data expiration. Features include background worker for automatic cleanup, multi-table support with different expiry times, configurable cleanup intervals, and production-ready implementation with ACID compliance.",
-  "version": "1.0.1",
-  "maintainer": [
-    "Ibrahim Karim Eddin <ibrahimkarimeddin@gmail.com>"
-  ],
+  "version": "1.0.2",
+  "maintainer": ["Ibrahim Karim Eddin <ibrahimkarimeddin@gmail.com>"],
   "license": "postgresql",
   "tags": [
     "ttl",
@@ -20,8 +18,8 @@
   ],
   "provides": {
     "pg_ttl_index": {
-      "file": "pg_ttl_index--1.0.sql",
-      "version": "1.0.1",
+      "file": "pg_ttl_index--1.0.2.sql",
+      "version": "1.0.2",
       "abstract": "TTL extension functions and background worker"
     }
   },

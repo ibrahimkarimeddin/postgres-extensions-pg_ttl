@@ -1,5 +1,5 @@
 comment = 'TTL index extension for automatic data expiration'
-default_version = '1.0'
+default_version = '1.0.2'
 relocatable = true
 module_pathname = '$libdir/pg_ttl_index'
 requires = ''
