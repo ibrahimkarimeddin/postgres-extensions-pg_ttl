@@ -106,8 +106,7 @@ _PG_init(void)
 }
 
 
-void
-ttl_worker_main(Datum main_arg)
+PGDLLEXPORT void ttl_worker_main(Datum main_arg)
 {
     Oid database_id = DatumGetObjectId(main_arg);
 
