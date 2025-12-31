@@ -1,0 +1,11 @@
+# Build artifacts
+*.o
+*.so
+*.bc
+
+# Distribution archives
+*.zip
+*.tar.gz
+
+# macOS
+.DS_Store
