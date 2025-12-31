@@ -35,7 +35,7 @@ DECLARE
     table_count INTEGER := 0;
     start_time TIMESTAMPTZ;
 BEGIN
-    start_time := NOW();
+    start_time := clock_timestamp();
     
     
     -- Count active TTL configurations
@@ -51,7 +51,7 @@ BEGIN
                ORDER BY table_name, column_name
     LOOP
         BEGIN
-            delete_query := format('DELETE FROM %I WHERE %I < NOW() - INTERVAL ''%s seconds''',
+            delete_query := format('DELETE FROM %I WHERE %I < clock_timestamp() - INTERVAL ''%s seconds''',
                                   rec.table_name, rec.column_name, rec.expire_after_seconds);
             
             EXECUTE delete_query;

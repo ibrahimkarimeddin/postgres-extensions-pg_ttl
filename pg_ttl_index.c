@@ -41,7 +41,7 @@ static void ttl_sigterm_handler(SIGNAL_ARGS);
 static void ttl_sighup_handler(SIGNAL_ARGS);
 
 void _PG_init(void);
-void ttl_worker_main(Datum main_arg);
+PGDLLEXPORT void ttl_worker_main(Datum main_arg);
 
 PG_FUNCTION_INFO_V1(ttl_create_index);
 PG_FUNCTION_INFO_V1(ttl_drop_index);
@@ -106,7 +106,7 @@ _PG_init(void)
 }
 
 
-void
+PGDLLEXPORT void
 ttl_worker_main(Datum main_arg)
 {
     Oid database_id = DatumGetObjectId(main_arg);
