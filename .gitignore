@@ -1,11 +1,89 @@
-# Build artifacts
+# PostgreSQL Extension Build Files
 *.o
 *.so
+*.dylib
 *.bc
+*.a
+*.dylib
 
-# Distribution archives
+# PostgreSQL Regression Test Output
+regression.diffs
+regression.out
+tmp_check/
+log/
+results/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.sublime-*
+.project
+.settings/
+.classpath
+
+# Compiled binaries
+*.exe
+*.dll
+
+# Archive files
 *.zip
 *.tar.gz
+*.tar.bz2
+*.tgz
 
-# macOS
-.DS_Store
+# Backup files
+*.bak
+*.backup
+*~
+
+# Distribution files
+dist/
+build/
+*.deb
+*.rpm
+
+# Dependency directories
+node_modules/
+__pycache__/
+*.pyc
+
+# Documentation build
+docs/_build/
+docs/.doctrees/
+
+# Coverage reports
+coverage/
+*.gcov
+*.gcda
+*.gcno
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# pgxn build artifacts
+META.json.tmp
+MYMETA.json
+MYMETA.yml
+
+# PostgreSQL test clusters
+/tmp_check/
+/tmp_check_iso/
+
+# Generated SQL files (keep only source)
+# Uncomment if you generate SQL from other sources
+# *.sql

@@ -1,10 +1,23 @@
 {
   "name": "pg_ttl_index",
   "abstract": "Automatic Time-To-Live (TTL) data expiration for PostgreSQL tables",
-  "description": "A high-performance PostgreSQL extension that provides automatic Time-To-Live (TTL) functionality for data expiration. Features include background worker for automatic cleanup, multi-table support with different expiry times, configurable cleanup intervals, and production-ready implementation with ACID compliance.",
+  "description": "A high-performance PostgreSQL extension that provides automatic Time-To-Live (TTL) functionality for data expiration. Features include background worker for automatic cleanup, multi-table support with different expiry times, configurable cleanup intervals, and production-ready implementation with ACID compliance and SQL injection protection.",
   "version": "1.0.2",
-  "maintainer": ["Ibrahim Karim Eddin <ibrahimkarimeddin@gmail.com>"],
+  "maintainer": [
+    "Ibrahim Karim Eddin <ibrahimkarimeddin@gmail.com>"
+  ],
+  "author": [
+    "Ibrahim Karim Eddin <ibrahimkarimeddin@gmail.com>"
+  ],
   "license": "postgresql",
+  "release_status": "stable",
+  "prereqs": {
+    "runtime": {
+      "requires": {
+        "PostgreSQL": "12.0.0"
+      }
+    }
+  },
   "tags": [
     "ttl",
     "time-to-live",
@@ -14,7 +27,9 @@
     "automatic",
     "data-retention",
     "performance",
-    "maintenance"
+    "maintenance",
+    "housekeeping",
+    "archive"
   ],
   "provides": {
     "pg_ttl_index": {
@@ -32,11 +47,20 @@
     },
     "bugtracker": {
       "web": "https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/issues"
-    }
+    },
+    "documentation": "https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/blob/main/README.md"
   },
   "generated_by": "Ibrahim Karim Eddin",
   "meta-spec": {
     "version": "1.0.0",
     "url": "https://pgxn.org/meta/spec.txt"
+  },
+  "no_index": {
+    "directory": [
+      "test",
+      ".github",
+      ".vscode"
+    ]
   }
 }
+

@@ -1,0 +1,109 @@
+name: PostgreSQL Extension CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [ created ]
+
+jobs:
+  test:
+    name: Test on PostgreSQL ${{ matrix.pg_version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pg_version: [12, 13, 14, 15, 16]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL ${{ matrix.pg_version }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-${{ matrix.pg_version }} postgresql-server-dev-${{ matrix.pg_version }}
+          
+      - name: Set PostgreSQL environment
+        run: |
+          echo "PATH=/usr/lib/postgresql/${{ matrix.pg_version }}/bin:$PATH" >> $GITHUB_ENV
+          
+      - name: Build extension
+        run: |
+          make clean
+          make
+          
+      - name: Install extension
+        run: |
+          sudo make install
+          
+      - name: Start PostgreSQL
+        run: |
+          sudo systemctl start postgresql@${{ matrix.pg_version }}-main
+          sudo -u postgres psql -c "ALTER SYSTEM SET shared_preload_libraries = 'pg_ttl_index';"
+          sudo systemctl restart postgresql@${{ matrix.pg_version }}-main
+          
+      - name: Run tests
+        run: |
+          sudo -u postgres psql -c "CREATE DATABASE test_db;"
+          sudo -u postgres psql -d test_db -f test/test_ttl.sql
+          
+  lint:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format postgresql-server-dev-14
+          
+      - name: Check C code formatting
+        run: |
+          clang-format --dry-run --Werror *.c
+          
+      - name: Check for common issues
+        run: |
+          # Check for trailing whitespace
+          ! grep -r '[[:blank:]]$' --include='*.c' --include='*.sql' --include='*.md'
+          
+  build_package:
+    name: Build Distribution Package
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install PostgreSQL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-14 postgresql-server-dev-14
+          
+      - name: Build and create package
+        run: |
+          make clean
+          make
+          make dist
+          
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: pg_ttl_index-package
+          path: dist/*.zip
+          
+      - name: Upload to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: dist/pg_ttl_index-${{ github.event.release.tag_name }}.zip
+          asset_name: pg_ttl_index-${{ github.event.release.tag_name }}.zip
+          asset_content_type: application/zip
