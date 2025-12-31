@@ -1,62 +1,15 @@
-/*-------------------------------------------------------------------------
- *
- * pg_ttl_index.c
- *		PostgreSQL extension for automatic Time-To-Live (TTL) data expiration
- *
- * This extension provides automatic deletion of expired rows based on
- * timestamp columns. It manages TTL configurations per table/column and
- * runs a background worker process to periodically clean up expired data.
- *
- * Key Features:
- *   - Automatic data expiration based on timestamp columns
- *   - Background worker for periodic cleanup
- *   - Support for multiple tables with different TTL settings
- *   - Configurable cleanup intervals
- *   - ACID-compliant with proper SQL injection protection
- *
- * Background Worker:
- *   The extension uses PostgreSQL's background worker infrastructure to
- *   run periodic cleanup jobs. The worker must be manually started using
- *   ttl_start_worker() and will run until explicitly stopped or PostgreSQL
- *   is restarted.
- *
- * Configuration Parameters:
- *   pg_ttl_index.naptime - Seconds between cleanup runs (default: 60)
- *   pg_ttl_index.enabled - Enable/disable background worker (default: true)
- *
- * Public Functions:
- *   ttl_create_index(table_name, column_name, expire_seconds) - Create TTL
- *   ttl_drop_index(table_name, column_name) - Remove TTL
- *   ttl_start_worker() - Start background worker
- *   ttl_stop_worker() - Stop background worker
- *   ttl_runner() - Manually trigger cleanup (called by worker)
- *
- * Copyright (c) 2024, pg_ttl_index Contributors
- * Licensed under the PostgreSQL License
- *
- *-------------------------------------------------------------------------
- */
-
 #include "postgres.h"
 #include "fmgr.h"
 #include "utils/builtins.h"
-#include "utils/timestamp.h"
 #include "executor/spi.h"
-#include "access/htup_details.h"
-#include "catalog/pg_type.h"
 #include "miscadmin.h"
-#include "storage/proc.h"
 #include "postmaster/bgworker.h"
 #include "storage/ipc.h"
 #include "storage/latch.h"
 #include "utils/guc.h"
-#include "tcop/utility.h"
 #include "utils/snapmgr.h"
 #include "access/xact.h"
-#include "utils/wait_event.h"
 #include "utils/elog.h"
-#include "nodes/pg_list.h"
-#include "utils/memutils.h"
 #include "pgstat.h" 
 
 PG_MODULE_MAGIC;

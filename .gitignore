@@ -86,4 +86,7 @@ MYMETA.yml
 
 # Generated SQL files (keep only source)
 # Uncomment if you generate SQL from other sources
-# *.sql
+
+# Compilation database
+compile_commands.json
+
