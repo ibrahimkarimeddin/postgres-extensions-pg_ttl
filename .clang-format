@@ -15,3 +15,25 @@ PointerAlignment: Right
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignTrailingComments: true
+
+# PostgreSQL requires postgres.h to be included FIRST
+# This config keeps it at the top
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  # postgres.h must be first (highest priority = 0)
+  - Regex:           '^"postgres\.h"$'
+    Priority:        0
+  # Other PostgreSQL headers
+  - Regex:           '^[<"]postgres/'
+    Priority:        1
+  - Regex:           '^[<"](access|catalog|commands|executor|fmgr|lib|miscadmin|nodes|optimizer|parser|pgstat|postmaster|storage|utils)/'
+    Priority:        1
+  - Regex:           '^[<"](fmgr|miscadmin|pgstat)\.h[">]$'
+    Priority:        1
+  # Local project headers
+  - Regex:           '^"'
+    Priority:        3
+  # System headers
+  - Regex:           '^<'
+    Priority:        2

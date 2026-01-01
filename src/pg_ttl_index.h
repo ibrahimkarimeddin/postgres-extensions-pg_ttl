@@ -2,6 +2,7 @@
 #define PG_TTL_INDEX_H
 
 #include "postgres.h"
+
 #include "postmaster/bgworker.h"
 
 /* Configuration constants */

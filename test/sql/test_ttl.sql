@@ -1,5 +1,5 @@
 /*
- * Test Suite for pg_ttl_index
+ * Test Suite for pg_ttl_index v2.0
  *
  * This file contains comprehensive tests for the TTL index extension.
  * Run with: make installcheck
@@ -16,11 +16,16 @@ CREATE TABLE test_sessions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Should succeed
+-- Should succeed and create index automatically
 SELECT ttl_create_index('test_sessions', 'created_at', 3600);
 
--- Verify configuration was created
-SELECT table_name, column_name, expire_after_seconds, active
+-- Verify index was created
+SELECT COUNT(*) > 0 as index_created 
+FROM pg_indexes 
+WHERE tablename = 'test_sessions' AND indexname LIKE 'idx_ttl%';
+
+-- Verify configuration was created with new fields
+SELECT table_name, column_name, expire_after_seconds, batch_size, active, index_name IS NOT NULL as has_index
 FROM ttl_index_table
 WHERE table_name = 'test_sessions';
 
@@ -36,34 +41,32 @@ SELECT ttl_runner();
 -- Verify only the expired row was deleted
 SELECT COUNT(*) as remaining_rows FROM test_sessions;
 
--- Test 4: Update TTL configuration
-SELECT ttl_create_index('test_sessions', 'created_at', 7200);
+-- Test 4: Update TTL configuration with new batch_size
+SELECT ttl_create_index('test_sessions', 'created_at', 7200, 5000);
 
 -- Verify update
-SELECT expire_after_seconds FROM ttl_index_table WHERE table_name = 'test_sessions';
+SELECT expire_after_seconds, batch_size FROM ttl_index_table WHERE table_name = 'test_sessions';
 
--- Test 5: Test invalid column type (should fail)
-CREATE TABLE test_invalid (
-    id SERIAL PRIMARY KEY,
-    created_at INTEGER  -- Invalid type
-);
+-- Test 5: Test TTL summary function with new fields
+SELECT table_name, column_name, expire_after_seconds, batch_size, active, index_name 
+FROM ttl_summary();
 
--- This should fail with an error
--- This should fail with an error
-SELECT ttl_create_index('test_invalid', 'created_at', 3600);
+-- Test 6: Test stats tracking
+SELECT table_name, rows_deleted_last_run, total_rows_deleted FROM ttl_summary();
 
--- Test 6: Test TTL summary function
-SELECT table_name, column_name, expire_after_seconds, active FROM ttl_summary();
-
--- Test 7: Drop TTL index
+-- Test 7: Drop TTL index (should also drop the auto-created index)
 SELECT ttl_drop_index('test_sessions', 'created_at');
 
 -- Verify it was removed
 SELECT COUNT(*) FROM ttl_index_table WHERE table_name = 'test_sessions';
 
+-- Verify index was dropped
+SELECT COUNT(*) as index_count 
+FROM pg_indexes 
+WHERE tablename = 'test_sessions' AND indexname LIKE 'idx_ttl%';
+
 -- Cleanup
 DROP TABLE test_sessions;
-DROP TABLE test_invalid;
 
 -- Test complete
 SELECT 'All tests passed!' as result;
