@@ -42,7 +42,8 @@ PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 
 # Disable LLVM bitcode compilation (requires clang, not always available in CI)
-WITH_LLVM = no
+# Must be set before including PGXS
+override WITH_LLVM = no
 
 include $(PGXS)
 
