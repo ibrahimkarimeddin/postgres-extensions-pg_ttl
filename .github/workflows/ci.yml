@@ -48,7 +48,7 @@ jobs:
       - name: Run tests
         run: |
           sudo -u postgres psql -c "CREATE DATABASE test_db;"
-          sudo -u postgres psql -d test_db -f test/test_ttl.sql
+          sudo -u postgres psql -d test_db -f test/sql/test_ttl.sql
           
   lint:
     name: Code Quality Checks
