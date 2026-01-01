@@ -289,37 +289,24 @@ $$;
 
 ```
 pg_ttl_index/
-├── pg_ttl_index.c           # Main C implementation
-├── pg_ttl_index--1.0.2.sql  # Latest SQL definitions
-├── pg_ttl_index.control     # Extension control file
-├── Makefile                 # Build configuration
-├── README.md                # User documentation
-├── CONTRIBUTING.md          # This file
-├── LICENSE                  # License information
-├── CHANGES                  # Version history
-├── META.json                # PGXN metadata
-├── .gitignore              # Git ignore rules
-├── sql/                    # SQL test scripts (future)
-│   └── test_ttl.sql
-└── expected/               # Expected test results (future)
-    └── test_ttl.out
+├── src/                    # C source files
+│   ├── pg_ttl_index.c      # Extension entry point
+│   ├── worker.c            # Background worker logic
+│   ├── api.c               # SQL interface implementation
+│   └── utils.c             # Helper functions
+├── test/                   # Regression tests
+│   ├── sql/                # Test scripts
+│   └── expected/           # Expected output
+├── pg_ttl_index--*.sql     # SQL definitions
+├── pg_ttl_index.control    # Extension control file
+├── Makefile                # Build configuration
+├── README.md               # User documentation
+├── CONTRIBUTING.md         # This file
+├── LICENSE                 # License information
+├── CHANGES                 # Version history
+└── META.json               # PGXN metadata
 ```
 
-## Version Compatibility
-
-When making changes, ensure compatibility with:
-- PostgreSQL 12, 13, 14, 15, 16
-- Both Linux and macOS platforms
-
-Use preprocessor directives for version-specific code:
-
-```c
-#if PG_VERSION_NUM >= 140000
-    /* PostgreSQL 14+ specific code */
-#else
-    /* Fallback for PostgreSQL 12-13 */
-#endif
-```
 
 ## Questions or Need Help?
 
@@ -332,6 +319,5 @@ Use preprocessor directives for version-specific code:
 Contributors will be acknowledged in:
 - CHANGES file
 - GitHub contributors list
-- Release notes
 
 Thank you for contributing to pg_ttl_index! 🎉

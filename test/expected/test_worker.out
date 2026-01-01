@@ -1,0 +1,133 @@
+-- Test Worker Lifecycle and Functionality
+-- This test modifies system configuration to speed up the worker, then restores it.
+-- 1. Setup Environment
+CREATE EXTENSION IF NOT EXISTS pg_ttl_index;
+NOTICE:  extension "pg_ttl_index" already exists, skipping
+CREATE TABLE worker_test_table (
+    id serial PRIMARY KEY,
+    created_at timestamptz DEFAULT NOW()
+);
+-- Index with 1 second expiration
+SELECT ttl_create_index('worker_test_table', 'created_at', 1);
+ ttl_create_index 
+------------------
+ t
+(1 row)
+
+-- 2. Speed up the worker (Set naptime to 1 second)
+ALTER SYSTEM SET pg_ttl_index.naptime = 1;
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1); -- Give time for reload
+ pg_sleep 
+----------
+ 
+(1 row)
+
+-- 3. Start the worker (if not already running)
+SELECT ttl_start_worker();
+ ttl_start_worker 
+------------------
+ t
+(1 row)
+
+SELECT pg_sleep(2); -- Give time for process spawn
+ pg_sleep 
+----------
+ 
+(1 row)
+
+-- 4. Verify worker is running
+SELECT count(*) > 0 as worker_is_active
+FROM pg_stat_activity 
+WHERE application_name LIKE 'TTL Worker%';
+ worker_is_active 
+------------------
+ t
+(1 row)
+
+-- 5. Run the "3 Times" Delete Test
+DO $$
+DECLARE
+    i integer;
+    retry integer;
+    remaining integer;
+BEGIN
+    FOR i IN 1..3 LOOP
+        RAISE NOTICE 'Starting Cycle %', i;
+        
+        -- Insert 5 rows that are already "expired" (created 10s ago)
+        INSERT INTO worker_test_table (created_at) 
+        SELECT now() - interval '10 seconds'
+        FROM generate_series(1, 5);
+        
+        -- Verify insertion
+        SELECT count(*) INTO remaining FROM worker_test_table;
+        IF remaining <> 5 THEN
+            RAISE EXCEPTION 'Insert failed, expected 5 rows, got %', remaining;
+        END IF;
+
+        -- Wait for worker to clean up (Poll for max 5 seconds)
+        FOR retry IN 1..10 LOOP
+            PERFORM pg_sleep(0.5);
+            SELECT count(*) INTO remaining FROM worker_test_table;
+            
+            IF remaining = 0 THEN
+                EXIT; -- Success!
+            END IF;
+        END LOOP;
+
+        IF remaining > 0 THEN
+            RAISE EXCEPTION 'Worker failed to clean rows in Cycle %. Remaining: %', i, remaining;
+        END IF;
+
+        RAISE NOTICE 'Cycle % Success: All rows deleted', i;
+    END LOOP;
+END;
+$$;
+NOTICE:  Starting Cycle 1
+ERROR:  Worker failed to clean rows in Cycle 1. Remaining: 5
+CONTEXT:  PL/pgSQL function inline_code_block line 32 at RAISE
+-- 6. Cleanup
+-- Reset configuration
+ALTER SYSTEM RESET pg_ttl_index.naptime;
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+-- Stop worker
+SELECT ttl_stop_worker();
+ ttl_stop_worker 
+-----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+-- Verify stopped
+SELECT count(*) as worker_count 
+FROM pg_stat_activity 
+WHERE application_name LIKE 'TTL Worker%';
+ worker_count 
+--------------
+            0
+(1 row)
+
+-- Drop table
+DROP TABLE worker_test_table;
+SELECT 'Test Complete' as result;
+    result     
+---------------
+ Test Complete
+(1 row)
+
