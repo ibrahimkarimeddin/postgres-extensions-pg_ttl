@@ -21,10 +21,7 @@ MODULE_big = pg_ttl_index
 OBJS = src/pg_ttl_index.o src/worker.o src/api.o src/utils.o
 
 # SQL files for all versions
-# Note: Include all version files and upgrade paths
-DATA = pg_ttl_index--1.0.2.sql \
-       pg_ttl_index--1.0.sql \
-       pg_ttl_index--1.0--1.0.2.sql
+DATA = pg_ttl_index--2.0.0.sql
 
 # Documentation
 DOCS = README.md CONTRIBUTING.md

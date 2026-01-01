@@ -1,1 +1,18 @@
 Revision history for pg_ttl_index
+
+2.0.0   2026-01-01
+        - BREAKING: API changed - ttl_create_index now takes batch_size parameter
+        - NEW: Batch deletion with configurable batch_size (default 10000)
+        - NEW: Auto-creates index on timestamp column for fast deletes
+        - NEW: Stats tracking (rows_deleted_last_run, total_rows_deleted)
+        - NEW: Advisory lock concurrency control (prevents overlapping runs)
+        - IMPROVED: Per-table error handling in ttl_runner()
+        - IMPROVED: ttl_summary() now returns all new fields
+        - REMOVED: C-based ttl_create_index/ttl_drop_index (now PL/pgSQL)
+
+1.0.2   (deprecated)
+        - Initial stable release with background worker
+        - Basic TTL functionality
+
+1.0     (deprecated)
+        - Initial development version

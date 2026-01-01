@@ -18,12 +18,13 @@ The `pg_ttl_index` extension provides automatic Time-To-Live (TTL) functionality
 
 ### Key Features
 - ✅ **Automatic data expiration** - Set it and forget it
-- ✅ **Background worker** - Runs cleanup every minute (manual start required)
+- ✅ **Background worker** - Runs cleanup at configurable intervals
+- ✅ **Batch deletion** - Handles millions of rows efficiently (v2.0+)
+- ✅ **Auto-indexing** - Creates index on timestamp column automatically (v2.0+)
+- ✅ **Stats tracking** - Monitor rows deleted per table (v2.0+)
+- ✅ **Concurrency control** - Advisory locks prevent overlapping runs (v2.0+)
 - ✅ **Multiple tables support** - Different expiry times per table
 - ✅ **Production ready** - ACID compliant with SQL injection protection
-- ✅ **Configurable** - Adjustable cleanup intervals
-- ✅ **Zero downtime** - No impact on your application performance
-- ✅ **Manual control** - Start/stop worker as needed
 
 ## Prerequisites
 
@@ -135,14 +136,18 @@ INSERT INTO user_sessions (user_id, session_data) VALUES
 
 ```sql
 -- Data expires after 1 hour (3600 seconds)
+-- Optional: specify batch_size for high-load tables (default: 10000)
 SELECT ttl_create_index('user_sessions', 'created_at', 3600);
+
+-- Or with custom batch size for high-volume tables
+SELECT ttl_create_index('user_sessions', 'created_at', 3600, 5000);
 ```
 
 ### 4. Verify TTL Index
 
 ```sql
--- Check active TTL indexes
-SELECT * FROM ttl_index_table;
+-- Check active TTL indexes with stats
+SELECT * FROM ttl_summary();
 ```
 
 ### 5. Test the Cleanup
@@ -165,8 +170,8 @@ CREATE TABLE sessions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Sessions expire after 24 hours
-SELECT ttl_create_index('sessions', 'created_at', 86400);
+-- Sessions expire after 24 hours (batch size 5000 for high load)
+SELECT ttl_create_index('sessions', 'created_at', 86400, 5000);
 ```
 
 ### Example 2: Log Cleanup
@@ -199,38 +204,16 @@ CREATE TABLE cache_entries (
 SELECT ttl_create_index('cache_entries', 'expires_at', 0);
 ```
 
-### Example 4: Multiple TTL Indexes
-
-```sql
--- Create a comprehensive logging table
-CREATE TABLE system_events (
-    id SERIAL PRIMARY KEY,
-    event_type VARCHAR(50) NOT NULL,
-    severity VARCHAR(10) NOT NULL,
-    message TEXT NOT NULL,
-    metadata JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    processed_at TIMESTAMPTZ
-);
-
--- Different retention policies
-SELECT ttl_create_index('system_events', 'created_at', 2592000);  -- 30 days for all events
-SELECT ttl_create_index('system_events', 'processed_at', 604800); -- 7 days for processed events
-```
-
 ### Managing TTL Indexes
 
 ```sql
--- List all TTL indexes
-SELECT 
-    table_name,
-    column_name,
-    expire_after_seconds,
-    active,
-    created_at,
-    last_run
-FROM ttl_index_table
-ORDER BY created_at DESC;
+-- List all TTL indexes with stats
+SELECT * FROM ttl_summary();
+
+-- Returns:
+-- table_name, column_name, expire_after_seconds, batch_size,
+-- active, last_run, time_since_last_run, rows_deleted_last_run,
+-- total_rows_deleted, index_name
 
 -- Update expiry time
 SELECT ttl_create_index('user_sessions', 'created_at', 7200); -- Change to 2 hours
@@ -245,7 +228,7 @@ UPDATE ttl_index_table
 SET active = true 
 WHERE table_name = 'user_sessions' AND column_name = 'created_at';
 
--- Remove TTL index completely
+-- Remove TTL index completely (also drops the auto-created index)
 SELECT ttl_drop_index('user_sessions', 'created_at');
 ```
 
@@ -260,14 +243,7 @@ The background worker is **not started automatically**. You must start it manual
 SELECT ttl_start_worker();
 
 -- Check if worker is running
-SELECT 
-    pid,
-    usename,
-    application_name,
-    state,
-    query_start
-FROM pg_stat_activity 
-WHERE application_name LIKE '%TTL%';
+SELECT * FROM ttl_worker_status();
 ```
 
 ### Important Notes
@@ -309,30 +285,21 @@ WHERE name LIKE 'pg_ttl_index%';
 ### Check Background Worker Status
 
 ```sql
--- View background worker processes
-SELECT 
-    pid,
-    usename,
-    application_name,
-    state,
-    query_start,
-    query
-FROM pg_stat_activity 
-WHERE application_name LIKE '%TTL%';
+-- View background worker status
+SELECT * FROM ttl_worker_status();
 ```
 
 ### Monitor Cleanup Activity
 
 ```sql
--- Check last cleanup times
+-- Check deletion stats and last cleanup times
 SELECT 
     table_name,
-    column_name,
+    rows_deleted_last_run,
+    total_rows_deleted,
     last_run,
-    NOW() - last_run AS time_since_last_run
-FROM ttl_index_table 
-WHERE active = true
-ORDER BY last_run DESC;
+    time_since_last_run
+FROM ttl_summary();
 ```
 
 
@@ -410,6 +377,3 @@ SELECT pg_reload_conf();
 - **GitHub Repository:** https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl
 - **Issues:** https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/issues
 - **Documentation:** This user guide
-
-
-

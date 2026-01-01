@@ -1,6 +1,8 @@
 #include "postgres.h"
+
 #include "fmgr.h"
 #include "utils/guc.h"
+
 #include <limits.h>
 
 #include "pg_ttl_index.h"
