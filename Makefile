@@ -72,8 +72,8 @@ rebuild: clean all install
 .PHONY: format
 format:
 	@if command -v clang-format >/dev/null 2>&1; then \
-		echo "Formatting C code..."; \
-		clang-format -i *.c; \
+		echo "Formatting C code in src/..."; \
+		clang-format -i src/*.c src/*.h; \
 	else \
 		echo "clang-format not found, skipping formatting"; \
 	fi

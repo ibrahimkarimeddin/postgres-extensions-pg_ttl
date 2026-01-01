@@ -1,8 +1,8 @@
 #ifndef PG_TTL_INDEX_UTILS_H
 #define PG_TTL_INDEX_UTILS_H
 
-#include "postgres.h"
 #include "lib/stringinfo.h"
+#include "postgres.h"
 
 /* SPI Helper functions */
 bool execute_spi_query(const char *query, int limit);
