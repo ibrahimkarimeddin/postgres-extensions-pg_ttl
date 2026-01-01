@@ -76,6 +76,8 @@ jobs:
     name: Build Distribution Package
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout code
