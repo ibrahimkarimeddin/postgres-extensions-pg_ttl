@@ -90,3 +90,6 @@ MYMETA.yml
 # Compilation database
 compile_commands.json
 
+
+
+.cache/*

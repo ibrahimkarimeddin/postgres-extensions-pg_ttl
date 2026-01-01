@@ -18,7 +18,7 @@ EXTENSION = pg_ttl_index
 MODULE_big = pg_ttl_index
 
 # Object files to compile
-OBJS = pg_ttl_index.o
+OBJS = src/pg_ttl_index.o src/worker.o src/api.o src/utils.o
 
 # SQL files for all versions
 # Note: Include all version files and upgrade paths
@@ -33,13 +33,14 @@ DOCS = README.md CONTRIBUTING.md
 PGFILEDESC = "pg_ttl_index - TTL index extension for automatic data expiration"
 
 # Regression tests (uncomment when tests are added)
-# REGRESS = test_ttl_basic test_ttl_worker test_ttl_edge_cases
-# REGRESS_OPTS = --inputdir=test
+REGRESS = test_ttl
+REGRESS_OPTS = --inputdir=test
 
 # Extra files to clean
-EXTRA_CLEAN = *.zip *.bc
+EXTRA_CLEAN = src/*.o src/*.bc
 
 # PostgreSQL configuration
+PG_CPPFLAGS = -I./src
 PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)

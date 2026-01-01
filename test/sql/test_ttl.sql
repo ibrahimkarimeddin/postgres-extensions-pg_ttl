@@ -49,10 +49,11 @@ CREATE TABLE test_invalid (
 );
 
 -- This should fail with an error
--- SELECT ttl_create_index('test_invalid', 'created_at', 3600);
+-- This should fail with an error
+SELECT ttl_create_index('test_invalid', 'created_at', 3600);
 
 -- Test 6: Test TTL summary function
-SELECT * FROM ttl_summary();
+SELECT table_name, column_name, expire_after_seconds, active FROM ttl_summary();
 
 -- Test 7: Drop TTL index
 SELECT ttl_drop_index('test_sessions', 'created_at');
