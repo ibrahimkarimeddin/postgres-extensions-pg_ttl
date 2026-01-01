@@ -30,7 +30,6 @@ The `pg_ttl_index` extension provides automatic Time-To-Live (TTL) functionality
 
 Before installing the extension, ensure you have:
 
-- **PostgreSQL 12.0+** (tested on PostgreSQL 12-16)
 - **Development tools** (make, gcc, postgresql-server-dev)
 - **Superuser privileges** for installation
 - **Database restart capability** (for shared_preload_libraries)
