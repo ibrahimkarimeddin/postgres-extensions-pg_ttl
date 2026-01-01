@@ -20,8 +20,8 @@ CREATE TABLE test_sessions (
 SELECT ttl_create_index('test_sessions', 'created_at', 3600);
 
 -- Verify index was created
-SELECT COUNT(*) > 0 as index_created 
-FROM pg_indexes 
+SELECT COUNT(*) > 0 as index_created
+FROM pg_indexes
 WHERE tablename = 'test_sessions' AND indexname LIKE 'idx_ttl%';
 
 -- Verify configuration was created with new fields
@@ -48,7 +48,7 @@ SELECT ttl_create_index('test_sessions', 'created_at', 7200, 5000);
 SELECT expire_after_seconds, batch_size FROM ttl_index_table WHERE table_name = 'test_sessions';
 
 -- Test 5: Test TTL summary function with new fields
-SELECT table_name, column_name, expire_after_seconds, batch_size, active, index_name 
+SELECT table_name, column_name, expire_after_seconds, batch_size, active, index_name
 FROM ttl_summary();
 
 -- Test 6: Test stats tracking
@@ -61,8 +61,8 @@ SELECT ttl_drop_index('test_sessions', 'created_at');
 SELECT COUNT(*) FROM ttl_index_table WHERE table_name = 'test_sessions';
 
 -- Verify index was dropped
-SELECT COUNT(*) as index_count 
-FROM pg_indexes 
+SELECT COUNT(*) as index_count
+FROM pg_indexes
 WHERE tablename = 'test_sessions' AND indexname LIKE 'idx_ttl%';
 
 -- Cleanup

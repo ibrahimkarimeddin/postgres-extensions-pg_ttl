@@ -199,7 +199,7 @@ When adding new features:
 3. **PR Title Format:**
    ```
    [TYPE] Brief description
-   
+
    Examples:
    [FEATURE] Add support for interval-based TTL
    [FIX] Resolve worker crash on NULL timestamps
@@ -236,15 +236,15 @@ my_function_name(const char *param1, int param2)
     /* Variable declarations */
     StringInfoData query;
     bool result = false;
-    
+
     /* Function body with clear logic */
     if (param1 == NULL)
         ereport(ERROR,
                 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                  errmsg("param1 cannot be NULL")));
-    
+
     /* More implementation */
-    
+
     return result;
 }
 ```
@@ -259,7 +259,7 @@ my_function_name(const char *param1, int param2)
 CREATE OR REPLACE FUNCTION ttl_my_function(
     table_name TEXT,
     column_name TEXT
-) 
+)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 AS $$
@@ -271,7 +271,7 @@ BEGIN
     FROM ttl_index_table
     WHERE table_name = $1
       AND column_name = $2;
-    
+
     RETURN row_count > 0;
 END;
 $$;

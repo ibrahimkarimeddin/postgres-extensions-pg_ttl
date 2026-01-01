@@ -33,7 +33,7 @@ jobs:
       - name: Build extension
         run: |
           make clean
-          make
+          make with_llvm=no
           
       - name: Install extension
         run: |
@@ -48,7 +48,7 @@ jobs:
       - name: Run tests
         run: |
           sudo -u postgres psql -c "CREATE DATABASE test_db;"
-          sudo -u postgres psql -d test_db -f test/test_ttl.sql
+          sudo -u postgres psql -d test_db -f test/sql/test_ttl.sql
           
   lint:
     name: Code Quality Checks
@@ -61,11 +61,11 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format postgresql-server-dev-14
+          sudo apt-get install -y clang-format
           
       - name: Check C code formatting
         run: |
-          clang-format --dry-run --Werror *.c
+          clang-format --dry-run --Werror src/*.c src/*.h
           
       - name: Check for common issues
         run: |
@@ -84,7 +84,7 @@ jobs:
       - name: Install PostgreSQL
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-14 postgresql-server-dev-14
+          sudo apt-get install -y postgresql-16 postgresql-server-dev-16
           
       - name: Build and create package
         run: |

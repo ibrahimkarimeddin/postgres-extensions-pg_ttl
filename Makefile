@@ -40,6 +40,11 @@ EXTRA_CLEAN = src/*.o src/*.bc
 PG_CPPFLAGS = -I./src
 PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
+
+# Disable LLVM bitcode compilation (requires clang, not always available in CI)
+# Must be set before including PGXS
+override with_llvm = no
+
 include $(PGXS)
 
 #-------------------------------------------------------------------------
