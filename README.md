@@ -125,7 +125,7 @@ CREATE TABLE user_sessions (
 );
 
 -- Insert some test data
-INSERT INTO user_sessions (user_id, session_data) VALUES 
+INSERT INTO user_sessions (user_id, session_data) VALUES
 (1, '{"login_time": "2024-01-01 10:00:00"}'),
 (2, '{"login_time": "2024-01-01 11:00:00"}'),
 (3, '{"login_time": "2024-01-01 12:00:00"}');
@@ -218,13 +218,13 @@ SELECT * FROM ttl_summary();
 SELECT ttl_create_index('user_sessions', 'created_at', 7200); -- Change to 2 hours
 
 -- Disable TTL index (temporarily)
-UPDATE ttl_index_table 
-SET active = false 
+UPDATE ttl_index_table
+SET active = false
 WHERE table_name = 'user_sessions' AND column_name = 'created_at';
 
 -- Re-enable TTL index
-UPDATE ttl_index_table 
-SET active = true 
+UPDATE ttl_index_table
+SET active = true
 WHERE table_name = 'user_sessions' AND column_name = 'created_at';
 
 -- Remove TTL index completely (also drops the auto-created index)
@@ -274,8 +274,8 @@ SELECT pg_reload_conf();
 
 ```sql
 -- Check current settings
-SELECT name, setting, unit, context 
-FROM pg_settings 
+SELECT name, setting, unit, context
+FROM pg_settings
 WHERE name LIKE 'pg_ttl_index%';
 ```
 
@@ -292,7 +292,7 @@ SELECT * FROM ttl_worker_status();
 
 ```sql
 -- Check deletion stats and last cleanup times
-SELECT 
+SELECT
     table_name,
     rows_deleted_last_run,
     total_rows_deleted,
@@ -353,8 +353,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ttl_index_table TO your_user;
 **Solution:**
 ```sql
 -- Check column data type
-SELECT column_name, data_type 
-FROM information_schema.columns 
+SELECT column_name, data_type
+FROM information_schema.columns
 WHERE table_name = 'your_table';
 
 -- Supported types: timestamp, timestamptz, date

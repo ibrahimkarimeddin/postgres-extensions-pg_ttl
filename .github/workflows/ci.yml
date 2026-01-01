@@ -33,7 +33,7 @@ jobs:
       - name: Build extension
         run: |
           make clean
-          make WITH_LLVM=no
+          make with_llvm=no
           
       - name: Install extension
         run: |

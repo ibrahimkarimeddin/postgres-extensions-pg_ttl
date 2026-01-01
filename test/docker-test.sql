@@ -1,6 +1,6 @@
 /*
  * Docker Test Script for pg_ttl_index
- * 
+ *
  * This script tests the background worker functionality:
  * 1. Creates extension and starts worker
  * 2. Creates a test table with TTL
@@ -36,7 +36,7 @@ INSERT INTO test_cleanup (message, created_at) VALUES
 
 -- Show current data
 SELECT 'Before cleanup - Row count:' as status, COUNT(*) as count FROM test_cleanup;
-SELECT id, message, created_at, 
+SELECT id, message, created_at,
        EXTRACT(EPOCH FROM (NOW() - created_at))::int as age_seconds
 FROM test_cleanup ORDER BY created_at;
 
