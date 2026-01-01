@@ -6,9 +6,6 @@
   "maintainer": [
     "Ibrahim Karim Eddin <ibrahimkarimeddin@gmail.com>"
   ],
-  "author": [
-    "Ibrahim Karim Eddin <ibrahimkarimeddin@gmail.com>"
-  ],
   "license": "postgresql",
   "release_status": "stable",
   "prereqs": {
@@ -49,7 +46,7 @@
     "bugtracker": {
       "web": "https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/issues"
     },
-    "documentation": "https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/blob/main/README.md"
+    "x_documentation": "https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/blob/main/README.md"
   },
   "generated_by": "Ibrahim Karim Eddin",
   "meta-spec": {
