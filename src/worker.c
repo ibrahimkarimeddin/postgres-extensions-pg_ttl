@@ -2,19 +2,16 @@
 
 #include "access/xact.h"
 #include "executor/spi.h"
-#include "fmgr.h"
 #include "miscadmin.h"
 #include "pgstat.h"
 #include "postmaster/bgworker.h"
 #include "storage/ipc.h"
 #include "storage/latch.h"
-#include "storage/proc.h"
 #include "utils/elog.h"
 #include "utils/guc.h"
 #include "utils/snapmgr.h"
 
 #include "pg_ttl_index.h"
-#include "utils.h"
 
 /* Externs needed by Postgres to find the function */
 PGDLLEXPORT void ttl_worker_main(Datum main_arg);
