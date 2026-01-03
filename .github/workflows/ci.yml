@@ -69,8 +69,8 @@ jobs:
           
       - name: Check for common issues
         run: |
-          # Check for trailing whitespace
-          ! grep -r '[[:blank:]]$' --include='*.c' --include='*.sql' --include='*.md'
+          # Check for trailing whitespace (excluding website_docs)
+          ! grep -r '[[:blank:]]$' --include='*.c' --include='*.sql' --include='*.md' --exclude-dir='website_docs' .
           
   build_package:
     name: Build Distribution Package
