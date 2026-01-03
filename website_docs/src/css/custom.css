@@ -1,0 +1,70 @@
+/**
+ * PostgreSQL-themed custom styling for pg_ttl_index documentation
+ * Using PostgreSQL's signature blue color palette
+ */
+
+/* PostgreSQL Blue Theme - Light Mode */
+:root {
+  /* PostgreSQL primary blue: #336791 */
+  --ifm-color-primary: #336791;
+  --ifm-color-primary-dark: #2e5c82;
+  --ifm-color-primary-darker: #2b577a;
+  --ifm-color-primary-darkest: #234764;
+  --ifm-color-primary-light: #3872a0;
+  --ifm-color-primary-lighter: #3b77a8;
+  --ifm-color-primary-lightest: #4687bf;
+  
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(51, 103, 145, 0.1);
+  
+  /* Hero banner customization */
+  --ifm-hero-background-color: #336791;
+  --ifm-hero-text-color: #fff;
+}
+
+/* PostgreSQL Blue Theme - Dark Mode */
+[data-theme='dark'] {
+  /* Lighter blue for dark mode readability */
+  --ifm-color-primary: #5b9bd5;
+  --ifm-color-primary-dark: #4189cf;
+  --ifm-color-primary-darker: #3580cb;
+  --ifm-color-primary-darkest: #2868a8;
+  --ifm-color-primary-light: #75addb;
+  --ifm-color-primary-lighter: #81b6df;
+  --ifm-color-primary-lightest: #a7cceb;
+  
+  --docusaurus-highlighted-code-line-bg: rgba(91, 155, 213, 0.2);
+  
+  /* Better contrast in dark mode */
+  --ifm-background-color: #1b1b1d;
+  --ifm-background-surface-color: #242526;
+}
+
+/* Custom styling for PostgreSQL code blocks */
+code {
+  border-radius: 4px;
+  background-color: rgba(51, 103, 145, 0.05);
+}
+
+[data-theme='dark'] code {
+  background-color: rgba(91, 155, 213, 0.15);
+}
+
+/* PostgreSQL-styled links */
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Navbar with PostgreSQL branding */
+.navbar {
+  box-shadow: 0 2px 4px rgba(51, 103, 145, 0.1);
+}
+
+/* Hero banner customization */
+.hero--primary {
+  background: linear-gradient(135deg, #336791 0%, #2e5c82 100%);
+}

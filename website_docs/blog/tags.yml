@@ -1,0 +1,19 @@
+postgresql:
+  label: PostgreSQL
+  permalink: /postgresql
+
+ttl:
+  label: TTL
+  permalink: /ttl
+
+performance:
+  label: Performance
+  permalink: /performance
+
+release:
+  label: Release
+  permalink: /release
+
+tutorial:
+  label: Tutorial
+  permalink: /tutorial
