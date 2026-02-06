@@ -68,7 +68,8 @@ jobs:
             }
             if (body.includes('postgresql 18') || body.includes('pg 18')) {
               labels.push('pg-18');
-            
+            }
+
 
             if (body.includes('ubuntu') || body.includes('debian')) {
               labels.push('os: linux');
