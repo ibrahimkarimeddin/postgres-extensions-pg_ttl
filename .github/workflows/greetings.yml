@@ -1,0 +1,63 @@
+name: Greetings
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Greet first-time contributors
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const isIssue = context.eventName === 'issues';
+            const creator = isIssue ? context.payload.issue.user.login : context.payload.pull_request.user.login;
+            const number = isIssue ? context.payload.issue.number : context.payload.pull_request.number;
+            
+            const { data: contributions } = isIssue
+              ? await github.rest.issues.listForRepo({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  creator: creator,
+                  state: 'all'
+                })
+              : await github.rest.pulls.list({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  state: 'all',
+                  creator: creator
+                });
+            
+            if (contributions.length === 1) {
+              const message = isIssue
+                ? "👋 Welcome @" + creator + "! Thanks for opening your first issue in the pg_ttl_index project!\n\n" +
+                  "We appreciate you taking the time to report this. A maintainer will review your issue soon.\n\n" +
+                  "In the meantime, you might find these resources helpful:\n" +
+                  "- 📚 [User Guide](https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/blob/main/README.md)\n" +
+                  "- 🤝 [Contributing Guidelines](https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/blob/main/CONTRIBUTING.md)\n" +
+                  "- 💬 [Discussions](https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/discussions)\n\n" +
+                  "If you'd like to work on this issue yourself, feel free to submit a pull request!"
+                : "🎉 Congratulations @" + creator + " on your first pull request to pg_ttl_index!\n\n" +
+                  "Thank you for contributing to the project! A maintainer will review your PR soon.\n\n" +
+                  "Please make sure:\n" +
+                  "- ✅ Your code follows our style guidelines\n" +
+                  "- ✅ Tests pass locally\n" +
+                  "- ✅ You've updated documentation if needed\n" +
+                  "- ✅ You've filled out the PR template\n\n" +
+                  "We're excited to review your contribution! 🚀";
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+                body: message
+              });
+            }

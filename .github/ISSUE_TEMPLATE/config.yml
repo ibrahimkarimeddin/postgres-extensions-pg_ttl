@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/blob/main/README.md
+    about: Read the user guide and documentation
+  - name: 💬 Questions & Discussions
+    url: https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 🔒 Security Issues
+    url: https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/security/advisories/new
+    about: Report security vulnerabilities privately

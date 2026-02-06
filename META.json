@@ -4,7 +4,8 @@
   "description": "A high-performance PostgreSQL extension that provides automatic Time-To-Live (TTL) functionality for data expiration. Features include background worker for automatic cleanup, batch deletion for high-load tables, auto-indexing of timestamp columns, configurable cleanup intervals, stats tracking, and production-ready implementation with ACID compliance.",
   "version": "2.0.0",
   "maintainer": [
-    "Ibrahim Karim Eddin <ibrahimkarimeddin@gmail.com>"
+    "Ibrahim Karim Eddin <ibrahimkarimeddin@gmail.com>",
+    "Roduan Kareem Aldeen <roduankd@gmail.com>"
   ],
   "license": "postgresql",
   "release_status": "stable",

@@ -1,0 +1,164 @@
+name: Auto Label Issues and PRs
+
+on:
+  issues:
+    types: [opened, edited]
+  pull_request:
+    types: [opened, edited, synchronize]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  label-issues:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues'
+    steps:
+      - name: Label based on issue content
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title.toLowerCase();
+            const body = (issue.body || '').toLowerCase();
+            const labels = [];
+
+            if (body.includes('background worker') || body.includes('ttl_worker')) {
+              labels.push('component: worker');
+            }
+            if (body.includes('ttl_create_index') || body.includes('ttl_drop_index')) {
+              labels.push('component: api');
+            }
+            if (body.includes('performance') || body.includes('slow') || body.includes('optimization')) {
+              labels.push('performance');
+            }
+            if (body.includes('documentation') || body.includes('readme') || title.includes('docs')) {
+              labels.push('documentation');
+            }
+            if (body.includes('test') || body.includes('testing')) {
+              labels.push('testing');
+            }
+
+            if (title.includes('critical') || body.includes('data loss') || body.includes('crash')) {
+              labels.push('priority: high');
+            }
+            if (title.includes('security') || body.includes('vulnerability') || body.includes('sql injection')) {
+              labels.push('security');
+            }
+
+            if (body.includes('postgresql 12') || body.includes('pg 12')) {
+              labels.push('pg-12');
+            }
+            if (body.includes('postgresql 13') || body.includes('pg 13')) {
+              labels.push('pg-13');
+            }
+            if (body.includes('postgresql 14') || body.includes('pg 14')) {
+              labels.push('pg-14');
+            }
+            if (body.includes('postgresql 15') || body.includes('pg 15')) {
+              labels.push('pg-15');
+            }
+            if (body.includes('postgresql 16') || body.includes('pg 16')) {
+              labels.push('pg-16');
+            }
+            if (body.includes('postgresql 17') || body.includes('pg 17')) {
+              labels.push('pg-17');
+            }
+            if (body.includes('postgresql 18') || body.includes('pg 18')) {
+              labels.push('pg-18');
+            
+
+            if (body.includes('ubuntu') || body.includes('debian')) {
+              labels.push('os: linux');
+            }
+            if (body.includes('macos') || body.includes('darwin')) {
+              labels.push('os: macos');
+            }
+            if (body.includes('windows') || body.includes('wsl')) {
+              labels.push('os: windows');
+            }
+            if (body.includes('docker')) {
+              labels.push('docker');
+            }
+
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labels
+              });
+            }
+
+  label-prs:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Label based on changed files
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const labels = [];
+
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            const changedFiles = files.map(f => f.filename);
+            
+            if (changedFiles.some(f => f.includes('worker.c'))) {
+              labels.push('component: worker');
+            }
+            if (changedFiles.some(f => f.includes('api.c'))) {
+              labels.push('component: api');
+            }
+            if (changedFiles.some(f => f.includes('utils.c') || f.includes('utils.h'))) {
+              labels.push('component: utils');
+            }
+            if (changedFiles.some(f => f.endsWith('.sql'))) {
+              labels.push('sql');
+            }
+            if (changedFiles.some(f => f.includes('test/'))) {
+              labels.push('testing');
+            }
+            if (changedFiles.some(f => f.includes('README') || f.includes('.md'))) {
+              labels.push('documentation');
+            }
+            if (changedFiles.some(f => f.includes('.github/workflows'))) {
+              labels.push('ci/cd');
+            }
+            if (changedFiles.some(f => f.includes('Makefile') || f.includes('META.json'))) {
+              labels.push('build');
+            }
+
+            const totalChanges = files.reduce((sum, f) => sum + f.changes, 0);
+            if (totalChanges < 10) {
+              labels.push('size: XS');
+            } else if (totalChanges < 50) {
+              labels.push('size: S');
+            } else if (totalChanges < 200) {
+              labels.push('size: M');
+            } else if (totalChanges < 500) {
+              labels.push('size: L');
+            } else {
+              labels.push('size: XL');
+            }
+
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                labels: labels
+              });
+            }

@@ -5,18 +5,47 @@ Thank you for your interest in contributing to pg_ttl_index! This document provi
 ## Table of Contents
 
 1. [Code of Conduct](#code-of-conduct)
-2. [Getting Started](#getting-started)
-3. [Development Setup](#development-setup)
-4. [Making Changes](#making-changes)
-5. [Testing](#testing)
-6. [Submitting Changes](#submitting-changes)
-7. [Coding Standards](#coding-standards)
+2. [Reporting Issues](#reporting-issues)
+3. [Getting Started](#getting-started)
+4. [Development Setup](#development-setup)
+5. [Making Changes](#making-changes)
+6. [Testing](#testing)
+7. [Submitting Changes](#submitting-changes)
+8. [Coding Standards](#coding-standards)
+
 
 ## Code of Conduct
 
 This project adheres to a code of conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
 
 **Be respectful, be collaborative, be helpful.**
+
+## Reporting Issues
+
+We use GitHub Issues to track bugs, feature requests, and other tasks. Before creating a new issue:
+
+### Search First
+- Check [existing issues](https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/issues) to avoid duplicates
+- Search [closed issues](https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/issues?q=is%3Aissue+is%3Aclosed) for previously resolved problems
+- Review [GitHub Discussions](https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/discussions) for questions
+
+### Use Issue Templates
+When creating a new issue, choose the appropriate template:
+- **Bug Report**: For reporting bugs or unexpected behavior
+- **Feature Request**: For suggesting new features or enhancements
+
+### Provide Complete Information
+- **Environment details**: PostgreSQL version, OS, extension version
+- **Reproduction steps**: Clear, step-by-step instructions
+- **Expected vs actual behavior**: What should happen vs what actually happens
+- **Logs and errors**: Include relevant error messages and log output
+- **Code examples**: Provide SQL queries or configuration when applicable
+
+### Issue Lifecycle
+- New issues are automatically labeled and triaged by maintainers
+- You'll receive a welcome message if this is your first contribution
+- Issues inactive for 60 days are marked as stale and may be closed
+- See [ISSUE_MANAGEMENT.md](ISSUE_MANAGEMENT.md) for detailed information
 
 ## Getting Started
 

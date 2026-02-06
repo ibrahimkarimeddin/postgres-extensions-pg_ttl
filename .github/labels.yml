@@ -1,0 +1,179 @@
+# Labels Configuration
+# This file documents the standard labels used in the pg_ttl_index project
+# To sync these labels to GitHub, use: gh label sync -f .github/labels.yml
+
+# Type Labels
+- name: bug
+  color: d73a4a
+  description: Something isn't working
+
+- name: enhancement
+  color: a2eeef
+  description: New feature or request
+
+- name: documentation
+  color: 0075ca
+  description: Improvements or additions to documentation
+
+- name: question
+  color: d876e3
+  description: Further information is requested
+
+- name: security
+  color: ee0701
+  description: Security vulnerability or concern
+
+# Priority Labels
+- name: "priority: high"
+  color: b60205
+  description: Critical issues requiring immediate attention
+
+- name: "priority: medium"
+  color: fbca04
+  description: Important but not urgent
+
+- name: "priority: low"
+  color: 0e8a16
+  description: Nice to have, low priority
+
+# Status Labels
+- name: needs-triage
+  color: ededed
+  description: Awaiting maintainer review
+
+- name: needs-info
+  color: fef2c0
+  description: Waiting for additional information from reporter
+
+- name: work in progress
+  color: f9d0c4
+  description: Currently being worked on
+
+- name: stale
+  color: eeeeee
+  description: Inactive for extended period
+
+- name: duplicate
+  color: cfd3d7
+  description: This issue or pull request already exists
+
+- name: wontfix
+  color: ffffff
+  description: This will not be worked on
+
+- name: invalid
+  color: e4e669
+  description: This doesn't seem right
+
+# Component Labels
+- name: "component: worker"
+  color: 5319e7
+  description: Background worker related
+
+- name: "component: api"
+  color: 5319e7
+  description: Public API functions
+
+- name: "component: utils"
+  color: 5319e7
+  description: Utility functions and helpers
+
+- name: sql
+  color: c5def5
+  description: SQL scripts and queries
+
+# PostgreSQL Version Labels
+- name: pg-12
+  color: 1d76db
+  description: PostgreSQL 12
+
+- name: pg-13
+  color: 1d76db
+  description: PostgreSQL 13
+
+- name: pg-14
+  color: 1d76db
+  description: PostgreSQL 14
+
+- name: pg-15
+  color: 1d76db
+  description: PostgreSQL 15
+
+- name: pg-16
+  color: 1d76db
+  description: PostgreSQL 16
+
+# OS Labels
+- name: "os: linux"
+  color: bfdadc
+  description: Linux-specific issues
+
+- name: "os: macos"
+  color: bfdadc
+  description: macOS-specific issues
+
+- name: "os: windows"
+  color: bfdadc
+  description: Windows-specific issues
+
+# Special Labels
+- name: good first issue
+  color: 7057ff
+  description: Good for newcomers
+
+- name: help wanted
+  color: 008672
+  description: Extra attention is needed
+
+- name: pinned
+  color: d4c5f9
+  description: Will not be marked as stale
+
+- name: docker
+  color: 0db7ed
+  description: Docker-related issues
+
+- name: performance
+  color: ff6b6b
+  description: Performance optimization
+
+- name: testing
+  color: bfd4f2
+  description: Test-related changes
+
+- name: ci/cd
+  color: 0e8a16
+  description: CI/CD pipeline changes
+
+- name: build
+  color: fbca04
+  description: Build system changes
+
+- name: metrics
+  color: ededed
+  description: Automated metrics reports
+
+- name: automated
+  color: ededed
+  description: Created by automation
+
+# Size Labels (for PRs)
+- name: "size: XS"
+  color: 3cbf00
+  description: Extra small PR (< 10 lines)
+
+- name: "size: S"
+  color: 5d9801
+  description: Small PR (10-49 lines)
+
+- name: "size: M"
+  color: 7f7203
+  description: Medium PR (50-199 lines)
+
+- name: "size: L"
+  color: a14c05
+  description: Large PR (200-499 lines)
+
+- name: "size: XL"
+  color: c32607
+  description: Extra large PR (500+ lines)
