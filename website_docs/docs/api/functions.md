@@ -27,7 +27,7 @@ ttl_create_index(
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `p_table_name` | TEXT | Yes | Name of the table to apply TTL to |
+| `p_table_name` | TEXT | Yes | Table to apply TTL to (schema-qualified is recommended, e.g. `app.sessions`) |
 | `p_column_name` | TEXT | Yes | Name of the timestamp column for expiration |
 | `p_expire_after_seconds` | INTEGER | Yes | Number of seconds before data expires |
 | `p_batch_size` | INTEGER | No | Rows to delete per batch (default: 10000) |
@@ -41,34 +41,37 @@ ttl_create_index(
 
 1. **Creates an index** on the timestamp column if it doesn't exist
    - Index name: `idx_ttl_{table}_{column}`
+   - If a suitable index already exists on the column, it is reused
 2. **Registers or updates** the TTL configuration in `ttl_index_table`
 3. **Activates** automatic cleanup for the table
 4. **Idempotent** - Safe to call multiple times (updates configuration)
+5. **Schema-aware** - Stores normalized `schema_name` + `table_name` internally
+6. **Hardened execution** - Uses fixed function `search_path` to prevent search-path hijacking
 
 #### Examples
 
 **Basic usage:**
 ```sql
 -- Sessions expire after 1 hour
-SELECT ttl_create_index('user_sessions', 'created_at', 3600);
+SELECT ttl_create_index('public.user_sessions', 'created_at', 3600);
 ```
 
 **With custom batch size:**
 ```sql
 -- High-volume table with large batch size
-SELECT ttl_create_index('app_logs', 'logged_at', 604800, 50000);
+SELECT ttl_create_index('public.app_logs', 'logged_at', 604800, 50000);
 ```
 
 **Immediate expiration (cache use case):**
 ```sql
 -- Expire based on expires_at column
-SELECT ttl_create_index('cache_entries', 'expires_at', 0);
+SELECT ttl_create_index('public.cache_entries', 'expires_at', 0);
 ```
 
 **Update existing TTL:**
 ```sql
 -- Change expiry from 1 hour to 2 hours
-SELECT ttl_create_index('user_sessions', 'created_at', 7200);
+SELECT ttl_create_index('public.user_sessions', 'created_at', 7200);
 ```
 
 #### Error Handling
@@ -115,7 +118,7 @@ ttl_drop_index(
 
 ```sql
 -- Remove TTL from sessions table
-SELECT ttl_drop_index('user_sessions', 'created_at');
+SELECT ttl_drop_index('public.user_sessions', 'created_at');
 
 -- Verify removal
 SELECT * FROM ttl_summary();
@@ -316,6 +319,7 @@ Returns a comprehensive summary of all TTL configurations and statistics.
 
 ```sql
 ttl_summary() RETURNS TABLE(
+    schema_name TEXT,
     table_name TEXT,
     column_name TEXT,
     expire_after_seconds INTEGER,
@@ -337,6 +341,7 @@ None.
 
 | Column | Type | Description |
 |--------|------|-------------|
+| `schema_name` | TEXT | Schema containing the TTL-enabled table |
 | `table_name` | TEXT | Table with TTL enabled |
 | `column_name` | TEXT | Timestamp column used for expiration |
 | `expire_after_seconds` | INTEGER | Expiration time in seconds |
@@ -353,6 +358,7 @@ None.
 **Basic monitoring:**
 ```sql
 SELECT 
+    schema_name,
     table_name,
     expire_after_seconds / 3600.0 AS expire_hours,
     rows_deleted_last_run,
@@ -368,6 +374,7 @@ SELECT * FROM ttl_summary() WHERE active = true;
 **Recent activity:**
 ```sql
 SELECT 
+    schema_name,
     table_name,
     last_run,
     time_since_last_run,
@@ -388,8 +395,8 @@ ORDER BY last_run DESC;
 SELECT ttl_start_worker();
 
 -- 2. Create TTL indexes
-SELECT ttl_create_index('sessions', 'created_at', 1800);
-SELECT ttl_create_index('logs', 'logged_at', 604800);
+SELECT ttl_create_index('public.sessions', 'created_at', 1800);
+SELECT ttl_create_index('public.logs', 'logged_at', 604800);
 
 -- 3. Monitor
 SELECT * FROM ttl_summary();
@@ -420,7 +427,7 @@ SELECT ttl_runner();
 -- Disable TTL temporarily
 UPDATE ttl_index_table 
 SET active = false 
-WHERE table_name = 'sessions';
+WHERE schema_name = 'public' AND table_name = 'sessions';
 
 -- Or stop worker completely
 SELECT ttl_stop_worker();
@@ -428,7 +435,7 @@ SELECT ttl_stop_worker();
 -- Re-enable
 UPDATE ttl_index_table 
 SET active = true 
-WHERE table_name = 'sessions';
+WHERE schema_name = 'public' AND table_name = 'sessions';
 SELECT ttl_start_worker();
 ```
 

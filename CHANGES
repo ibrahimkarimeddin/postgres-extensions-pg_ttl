@@ -1,5 +1,12 @@
 Revision history for pg_ttl_index
 
+2.0.1   (unreleased)
+        - SECURITY: Added schema-aware TTL tracking (`schema_name`) and schema-qualified dynamic SQL
+        - SECURITY: Hardened SQL/C function execution against search_path hijacking
+        - NEW: `ttl_create_index` and `ttl_drop_index` now support schema-qualified table names
+        - IMPROVED: `ttl_summary()` now returns `schema_name`
+        - TESTS: Added multi-schema regression coverage
+
 2.0.0   2026-01-01
         - BREAKING: API changed - ttl_create_index now takes batch_size parameter
         - NEW: Batch deletion with configurable batch_size (default 10000)

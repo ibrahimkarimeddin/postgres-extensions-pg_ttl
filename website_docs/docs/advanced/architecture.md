@@ -47,6 +47,7 @@ Understanding how `pg_ttl_index` works under the hood.
 **Location**: `pg_ttl_index--2.0.0.sql`
 
 - **`ttl_index_table`** - Configuration and statistics storage
+  - Stores normalized `schema_name` + `table_name`
 - **`ttl_create_index()`** - Create/update TTL rules
 - **`ttl_drop_index()`** - Remove TTL rules  
 - **`ttl_runner()`** - Execute cleanup logic
@@ -94,7 +95,7 @@ while (true) {
     if (shutdown_requested) break;
     
     // 2. Execute cleanup
-    execute_sql("SELECT ttl_runner()");
+    execute_sql("SELECT <extension_schema>.ttl_runner()");
     
     // 3. Sleep for naptime seconds
     sleep(pg_ttl_index_naptime);
@@ -144,7 +145,7 @@ Using `ctid` (physical row location) is faster than index-based deletion:
 DELETE FROM table WHERE id IN (SELECT id FROM ...);
 
 -- Fast: direct physical row access
-DELETE FROM table WHERE ctid = ANY(ARRAY(SELECT ctid FROM ...));
+DELETE FROM table WHERE ctid IN (SELECT ctid FROM ...);
 ```
 
 ## Concurrency Control
@@ -177,13 +178,13 @@ When `ttl_create_index()` is called:
 
 ```sql
 1. Generate index name: idx_ttl_{table}_{column}
-2. Execute: CREATE INDEX IF NOT EXISTS idx_ttl_... ON table(column)
+2. Execute: CREATE INDEX IF NOT EXISTS idx_ttl_... ON schema.table(column)
 3. Store index name in ttl_index_table.index_name
 ```
 
 **Example**:
 ```sql
-SELECT ttl_create_index('sessions', 'created_at', 3600);
+SELECT ttl_create_index('public.sessions', 'created_at', 3600);
 -- Creates: idx_ttl_sessions_created_at
 ```
 
@@ -247,8 +248,12 @@ SET
     last_run = NOW(),
     rows_deleted_last_run = {rows deleted this run},
     total_rows_deleted = total_rows_deleted + {rows deleted this run}
-WHERE table_name = ... AND column_name = ...;
+WHERE schema_name = ... AND table_name = ... AND column_name = ...;
 ```
+
+## Security Hardening
+
+`pg_ttl_index` functions now run with a fixed `search_path` captured at install time (`SET search_path FROM CURRENT`). This prevents runtime `search_path` changes from redirecting function resolution to attacker-controlled objects.
 
 ### Counter Precision
 

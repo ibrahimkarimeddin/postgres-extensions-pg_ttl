@@ -1,4 +1,5 @@
 CREATE TABLE ttl_index_table (
+    schema_name TEXT NOT NULL DEFAULT 'public',
     table_name TEXT NOT NULL,
     column_name TEXT NOT NULL,
     expire_after_seconds INTEGER NOT NULL,
@@ -11,7 +12,8 @@ CREATE TABLE ttl_index_table (
     rows_deleted_last_run BIGINT DEFAULT 0,
     total_rows_deleted BIGINT DEFAULT 0,
     index_name TEXT,
-    PRIMARY KEY (table_name, column_name)
+    index_created_by_extension BOOLEAN NOT NULL DEFAULT false,
+    PRIMARY KEY (schema_name, table_name, column_name)
 );
 
 -- Create TTL index with auto-indexing
@@ -22,23 +24,121 @@ CREATE FUNCTION ttl_create_index(
     p_batch_size INTEGER DEFAULT 10000
 ) RETURNS BOOLEAN
 LANGUAGE plpgsql
+SET search_path FROM CURRENT
 AS $$
 DECLARE
     v_idx_name TEXT;
+    v_generated_idx_name TEXT;
+    v_existing_idx_name TEXT;
+    v_prev_idx_name TEXT;
+    v_prev_index_created_by_extension BOOLEAN;
+    v_index_created_by_extension BOOLEAN;
+    v_table_oid OID;
+    v_table_schema TEXT;
+    v_table_name TEXT;
+    v_column_exists BOOLEAN;
 BEGIN
-    -- Create index name
-    v_idx_name := 'idx_ttl_' || p_table_name || '_' || p_column_name;
+    IF p_table_name IS NULL OR p_table_name = '' THEN
+        RAISE EXCEPTION 'Table name cannot be empty';
+    END IF;
 
-    -- Create index on timestamp column for fast deletes
-    EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I (%I)',
-                   v_idx_name, p_table_name, p_column_name);
+    IF p_column_name IS NULL OR p_column_name = '' THEN
+        RAISE EXCEPTION 'Column name cannot be empty';
+    END IF;
+
+    IF p_batch_size <= 0 THEN
+        RAISE EXCEPTION 'Batch size must be greater than 0';
+    END IF;
+
+    IF p_expire_after_seconds < 0 THEN
+        RAISE EXCEPTION 'expire_after_seconds must be >= 0';
+    END IF;
+
+    v_table_oid := pg_catalog.to_regclass(p_table_name);
+    IF v_table_oid IS NULL THEN
+        RAISE EXCEPTION 'Table "%" was not found. Use a schema-qualified name (e.g. myschema.mytable).',
+                        p_table_name;
+    END IF;
+
+    SELECT n.nspname, c.relname
+    INTO v_table_schema, v_table_name
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n
+      ON n.oid = c.relnamespace
+    WHERE c.oid = v_table_oid
+      AND c.relkind IN ('r', 'p');
+
+    IF v_table_schema IS NULL THEN
+        RAISE EXCEPTION 'Object "%" is not a regular or partitioned table', p_table_name;
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1
+        FROM pg_catalog.pg_attribute a
+        WHERE a.attrelid = v_table_oid
+          AND a.attname = p_column_name
+          AND a.attnum > 0
+          AND NOT a.attisdropped
+    ) INTO v_column_exists;
+
+    IF NOT v_column_exists THEN
+        RAISE EXCEPTION 'Column "%" does not exist on table %.%', p_column_name, v_table_schema, v_table_name;
+    END IF;
+
+    -- Create index name
+    v_generated_idx_name := 'idx_ttl_' || v_table_name || '_' || p_column_name;
+
+    -- Keep ownership stable across repeated updates.
+    SELECT index_name, index_created_by_extension
+    INTO v_prev_idx_name, v_prev_index_created_by_extension
+    FROM ttl_index_table
+    WHERE ttl_index_table.schema_name = v_table_schema
+      AND ttl_index_table.table_name = v_table_name
+      AND ttl_index_table.column_name = p_column_name;
+
+    IF COALESCE(v_prev_index_created_by_extension, false) THEN
+        v_idx_name := COALESCE(v_prev_idx_name, v_generated_idx_name);
+        EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I.%I (%I)',
+                       v_idx_name, v_table_schema, v_table_name, p_column_name);
+        v_index_created_by_extension := true;
+    ELSE
+        -- Reuse any existing valid/ready index that already includes the TTL column.
+        SELECT idx.relname
+        INTO v_existing_idx_name
+        FROM pg_catalog.pg_index i
+        JOIN pg_catalog.pg_class idx
+          ON idx.oid = i.indexrelid
+        JOIN pg_catalog.pg_attribute a
+          ON a.attrelid = i.indrelid
+         AND a.attnum = ANY(i.indkey)
+        WHERE i.indrelid = v_table_oid
+          AND a.attname = p_column_name
+          AND i.indisvalid
+          AND i.indisready
+        ORDER BY idx.relname
+        LIMIT 1;
+
+        IF v_existing_idx_name IS NOT NULL THEN
+            v_idx_name := v_existing_idx_name;
+            v_index_created_by_extension := false;
+        ELSE
+            v_idx_name := v_generated_idx_name;
+            EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I.%I (%I)',
+                           v_idx_name, v_table_schema, v_table_name, p_column_name);
+            v_index_created_by_extension := true;
+        END IF;
+    END IF;
 
     -- Insert or update TTL configuration
-    INSERT INTO ttl_index_table (table_name, column_name, expire_after_seconds, batch_size, index_name, active, created_at)
-    VALUES (p_table_name, p_column_name, p_expire_after_seconds, p_batch_size, v_idx_name, true, NOW())
-    ON CONFLICT (table_name, column_name) DO UPDATE SET
+    INSERT INTO ttl_index_table (schema_name, table_name, column_name, expire_after_seconds,
+                                 batch_size, index_name, index_created_by_extension, active, created_at)
+    VALUES (v_table_schema, v_table_name, p_column_name, p_expire_after_seconds,
+            p_batch_size, v_idx_name, v_index_created_by_extension, true, NOW())
+    ON CONFLICT (schema_name, table_name, column_name) DO UPDATE SET
         expire_after_seconds = p_expire_after_seconds,
         batch_size = p_batch_size,
+        index_name = EXCLUDED.index_name,
+        index_created_by_extension = EXCLUDED.index_created_by_extension,
         active = true,
         updated_at = NOW();
 
@@ -55,24 +155,53 @@ CREATE FUNCTION ttl_drop_index(
     p_column_name TEXT
 ) RETURNS BOOLEAN
 LANGUAGE plpgsql
+SET search_path FROM CURRENT
 AS $$
 DECLARE
     v_idx_name TEXT;
+    v_index_created_by_extension BOOLEAN;
+    v_table_oid OID;
+    v_table_schema TEXT;
+    v_table_name TEXT;
 BEGIN
-    -- Get the index name
-    SELECT index_name INTO v_idx_name
+    IF p_table_name IS NULL OR p_table_name = '' THEN
+        RAISE EXCEPTION 'Table name cannot be empty';
+    END IF;
+
+    IF p_column_name IS NULL OR p_column_name = '' THEN
+        RAISE EXCEPTION 'Column name cannot be empty';
+    END IF;
+
+    v_table_oid := pg_catalog.to_regclass(p_table_name);
+    IF v_table_oid IS NULL THEN
+        RAISE EXCEPTION 'Table "%" was not found. Use a schema-qualified name (e.g. myschema.mytable).',
+                        p_table_name;
+    END IF;
+
+    SELECT n.nspname, c.relname
+    INTO v_table_schema, v_table_name
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n
+      ON n.oid = c.relnamespace
+    WHERE c.oid = v_table_oid;
+
+    -- Get index ownership details.
+    SELECT index_name, index_created_by_extension
+    INTO v_idx_name, v_index_created_by_extension
     FROM ttl_index_table
-    WHERE ttl_index_table.table_name = p_table_name
+    WHERE ttl_index_table.schema_name = v_table_schema
+      AND ttl_index_table.table_name = v_table_name
       AND ttl_index_table.column_name = p_column_name;
 
-    -- Drop the index if it exists
-    IF v_idx_name IS NOT NULL THEN
-        EXECUTE format('DROP INDEX IF EXISTS %I', v_idx_name);
+    -- Drop only indexes managed by this extension.
+    IF v_idx_name IS NOT NULL AND COALESCE(v_index_created_by_extension, false) THEN
+        EXECUTE format('DROP INDEX IF EXISTS %I.%I', v_table_schema, v_idx_name);
     END IF;
 
     -- Delete the configuration
     DELETE FROM ttl_index_table
-    WHERE ttl_index_table.table_name = p_table_name
+    WHERE ttl_index_table.schema_name = v_table_schema
+      AND ttl_index_table.table_name = v_table_name
       AND ttl_index_table.column_name = p_column_name;
 
     RETURN FOUND;
@@ -82,6 +211,7 @@ $$;
 -- Optimized TTL runner with batch deletion and per-table transactions
 CREATE OR REPLACE FUNCTION ttl_runner() RETURNS INTEGER
 LANGUAGE plpgsql
+SET search_path FROM CURRENT
 AS $$
 DECLARE
     rec RECORD;
@@ -93,18 +223,18 @@ DECLARE
     lock_acquired BOOLEAN;
 BEGIN
     -- Concurrency control: Try to acquire advisory lock
-    SELECT pg_try_advisory_lock(hashtext('pg_ttl_index_runner')) INTO lock_acquired;
+    SELECT pg_catalog.pg_try_advisory_lock(pg_catalog.hashtext('pg_ttl_index_runner')) INTO lock_acquired;
     IF NOT lock_acquired THEN
         RAISE NOTICE 'TTL runner: Another instance is already running, skipping';
         RETURN 0;
     END IF;
 
-    start_time := clock_timestamp();
+    start_time := pg_catalog.clock_timestamp();
 
     -- Process each table with its own error handling
-    FOR rec IN SELECT table_name, column_name, expire_after_seconds, batch_size
+    FOR rec IN SELECT schema_name, table_name, column_name, expire_after_seconds, batch_size
                FROM ttl_index_table WHERE active = true
-               ORDER BY table_name, column_name
+               ORDER BY schema_name, table_name, column_name
     LOOP
         table_deleted := 0;
 
@@ -113,13 +243,14 @@ BEGIN
             LOOP
                 -- Delete in batches using ctid for efficiency
                 delete_query := format(
-                    'DELETE FROM %I WHERE ctid = ANY(ARRAY(
-                        SELECT ctid FROM %I
-                        WHERE %I < clock_timestamp() - INTERVAL ''%s seconds''
+                    'DELETE FROM %I.%I WHERE ctid = ANY(ARRAY(
+                        SELECT ctid FROM %I.%I
+                        WHERE %I < pg_catalog.clock_timestamp() - pg_catalog.make_interval(secs => %s)
                         LIMIT %s
                     ))',
-                    rec.table_name, rec.table_name, rec.column_name,
-                    rec.expire_after_seconds, rec.batch_size
+                    rec.schema_name, rec.table_name,
+                    rec.schema_name, rec.table_name,
+                    rec.column_name, rec.expire_after_seconds, rec.batch_size
                 );
 
                 EXECUTE delete_query;
@@ -132,7 +263,7 @@ BEGIN
                 EXIT WHEN batch_deleted = 0;
 
                 -- Yield to other processes between batches
-                PERFORM pg_sleep(0.01);
+                PERFORM pg_catalog.pg_sleep(0.01);
             END LOOP;
 
             -- Update stats for this table
@@ -140,18 +271,19 @@ BEGIN
             SET last_run = start_time,
                 rows_deleted_last_run = table_deleted,
                 total_rows_deleted = ttl_index_table.total_rows_deleted + table_deleted
-            WHERE ttl_index_table.table_name = rec.table_name
+            WHERE ttl_index_table.schema_name = rec.schema_name
+              AND ttl_index_table.table_name = rec.table_name
               AND ttl_index_table.column_name = rec.column_name;
 
         EXCEPTION WHEN OTHERS THEN
             -- Log error but continue with other tables
-            RAISE WARNING 'TTL runner: Failed to cleanup table %.%: % (%)',
-                         rec.table_name, rec.column_name, SQLERRM, SQLSTATE;
+            RAISE WARNING 'TTL runner: Failed to cleanup table %.%.%: % (%)',
+                         rec.schema_name, rec.table_name, rec.column_name, SQLERRM, SQLSTATE;
         END;
     END LOOP;
 
     -- Release advisory lock
-    PERFORM pg_advisory_unlock(hashtext('pg_ttl_index_runner'));
+    PERFORM pg_catalog.pg_advisory_unlock(pg_catalog.hashtext('pg_ttl_index_runner'));
 
     RETURN total_deleted;
 END;
@@ -160,10 +292,12 @@ $$;
 -- C functions for worker management
 CREATE FUNCTION ttl_start_worker() RETURNS BOOLEAN
 LANGUAGE C STRICT
+SET search_path FROM CURRENT
 AS 'MODULE_PATHNAME';
 
 CREATE FUNCTION ttl_stop_worker() RETURNS BOOLEAN
 LANGUAGE C STRICT
+SET search_path FROM CURRENT
 AS 'MODULE_PATHNAME';
 
 -- Worker status function
@@ -178,6 +312,7 @@ RETURNS TABLE(
     database_name TEXT
 )
 LANGUAGE sql
+SET search_path FROM CURRENT
 AS $$
     SELECT
         pid::INTEGER as worker_pid,
@@ -187,7 +322,7 @@ AS $$
         state_change,
         query_start,
         datname::TEXT as database_name
-    FROM pg_stat_activity
+    FROM pg_catalog.pg_stat_activity
     WHERE application_name LIKE 'TTL Worker DB %'
     ORDER BY backend_start DESC;
 $$;
@@ -195,6 +330,7 @@ $$;
 -- Enhanced summary with stats
 CREATE OR REPLACE FUNCTION ttl_summary()
 RETURNS TABLE(
+    schema_name TEXT,
     table_name TEXT,
     column_name TEXT,
     expire_after_seconds INTEGER,
@@ -207,8 +343,10 @@ RETURNS TABLE(
     index_name TEXT
 )
 LANGUAGE sql
+SET search_path FROM CURRENT
 AS $$
     SELECT
+        t.schema_name,
         t.table_name,
         t.column_name,
         t.expire_after_seconds,
@@ -223,5 +361,5 @@ AS $$
         t.total_rows_deleted,
         t.index_name
     FROM ttl_index_table t
-    ORDER BY t.table_name, t.column_name;
+    ORDER BY t.schema_name, t.table_name, t.column_name;
 $$;

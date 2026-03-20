@@ -5,6 +5,8 @@
  * Run with: make installcheck
  */
 -- Basic extension installation test
+DROP EXTENSION IF EXISTS pg_ttl_index CASCADE;
+NOTICE:  extension "pg_ttl_index" does not exist, skipping
 CREATE EXTENSION IF NOT EXISTS pg_ttl_index;
 -- Test 1: Create TTL index on a simple table
 CREATE TABLE test_sessions (
@@ -30,12 +32,13 @@ WHERE tablename = 'test_sessions' AND indexname LIKE 'idx_ttl%';
 (1 row)
 
 -- Verify configuration was created with new fields
-SELECT table_name, column_name, expire_after_seconds, batch_size, active, index_name IS NOT NULL as has_index
+SELECT schema_name, table_name, column_name, expire_after_seconds, batch_size, active,
+       index_name IS NOT NULL as has_index, index_created_by_extension
 FROM ttl_index_table
-WHERE table_name = 'test_sessions';
-  table_name   | column_name | expire_after_seconds | batch_size | active | has_index 
----------------+-------------+----------------------+------------+--------+-----------
- test_sessions | created_at  |                 3600 |      10000 | t      | t
+WHERE schema_name = 'public' AND table_name = 'test_sessions';
+ schema_name |  table_name   | column_name | expire_after_seconds | batch_size | active | has_index | index_created_by_extension 
+-------------+---------------+-------------+----------------------+------------+--------+-----------+----------------------------
+ public      | test_sessions | created_at  |                 3600 |      10000 | t      | t         | t
 (1 row)
 
 -- Test 2: Insert test data
@@ -66,25 +69,27 @@ NOTICE:  relation "idx_ttl_test_sessions_created_at" already exists, skipping
 (1 row)
 
 -- Verify update
-SELECT expire_after_seconds, batch_size FROM ttl_index_table WHERE table_name = 'test_sessions';
- expire_after_seconds | batch_size 
-----------------------+------------
-                 7200 |       5000
+SELECT expire_after_seconds, batch_size, index_created_by_extension
+FROM ttl_index_table
+WHERE schema_name = 'public' AND table_name = 'test_sessions';
+ expire_after_seconds | batch_size | index_created_by_extension 
+----------------------+------------+----------------------------
+                 7200 |       5000 | t
 (1 row)
 
 -- Test 5: Test TTL summary function with new fields
-SELECT table_name, column_name, expire_after_seconds, batch_size, active, index_name
+SELECT schema_name, table_name, column_name, expire_after_seconds, batch_size, active, index_name
 FROM ttl_summary();
-  table_name   | column_name | expire_after_seconds | batch_size | active |            index_name            
----------------+-------------+----------------------+------------+--------+----------------------------------
- test_sessions | created_at  |                 7200 |       5000 | t      | idx_ttl_test_sessions_created_at
+ schema_name |  table_name   | column_name | expire_after_seconds | batch_size | active |            index_name            
+-------------+---------------+-------------+----------------------+------------+--------+----------------------------------
+ public      | test_sessions | created_at  |                 7200 |       5000 | t      | idx_ttl_test_sessions_created_at
 (1 row)
 
 -- Test 6: Test stats tracking
-SELECT table_name, rows_deleted_last_run, total_rows_deleted FROM ttl_summary();
-  table_name   | rows_deleted_last_run | total_rows_deleted 
----------------+-----------------------+--------------------
- test_sessions |                     1 |                  1
+SELECT schema_name, table_name, rows_deleted_last_run, total_rows_deleted FROM ttl_summary();
+ schema_name |  table_name   | rows_deleted_last_run | total_rows_deleted 
+-------------+---------------+-----------------------+--------------------
+ public      | test_sessions |                     1 |                  1
 (1 row)
 
 -- Test 7: Drop TTL index (should also drop the auto-created index)
@@ -95,7 +100,7 @@ SELECT ttl_drop_index('test_sessions', 'created_at');
 (1 row)
 
 -- Verify it was removed
-SELECT COUNT(*) FROM ttl_index_table WHERE table_name = 'test_sessions';
+SELECT COUNT(*) FROM ttl_index_table WHERE schema_name = 'public' AND table_name = 'test_sessions';
  count 
 -------
      0
@@ -112,6 +117,113 @@ WHERE tablename = 'test_sessions' AND indexname LIKE 'idx_ttl%';
 
 -- Cleanup
 DROP TABLE test_sessions;
+-- Test 8: Pre-existing index should not be dropped
+CREATE TABLE test_preexisting_index (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    payload TEXT
+);
+CREATE INDEX idx_preexisting_created_at ON test_preexisting_index(created_at);
+SELECT ttl_create_index('test_preexisting_index', 'created_at', 3600);
+ ttl_create_index 
+------------------
+ t
+(1 row)
+
+-- Verify extension reuses pre-existing index and marks ownership correctly
+SELECT index_name, index_created_by_extension
+FROM ttl_index_table
+WHERE schema_name = 'public' AND table_name = 'test_preexisting_index';
+         index_name         | index_created_by_extension 
+----------------------------+----------------------------
+ idx_preexisting_created_at | f
+(1 row)
+
+SELECT ttl_drop_index('test_preexisting_index', 'created_at');
+ ttl_drop_index 
+----------------
+ t
+(1 row)
+
+-- Verify TTL config removed but pre-existing index still exists
+SELECT COUNT(*) AS ttl_config_count
+FROM ttl_index_table
+WHERE schema_name = 'public' AND table_name = 'test_preexisting_index';
+ ttl_config_count 
+------------------
+                0
+(1 row)
+
+SELECT COUNT(*) AS preexisting_index_count
+FROM pg_indexes
+WHERE tablename = 'test_preexisting_index'
+  AND indexname = 'idx_preexisting_created_at';
+ preexisting_index_count 
+-------------------------
+                       1
+(1 row)
+
+DROP TABLE test_preexisting_index;
+-- Test 9: Schema-qualified names are tracked and executed correctly
+CREATE SCHEMA ttl_schema_test_a;
+CREATE SCHEMA ttl_schema_test_b;
+CREATE TABLE ttl_schema_test_a.schema_sessions (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE ttl_schema_test_b.schema_sessions (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+INSERT INTO ttl_schema_test_a.schema_sessions (created_at)
+VALUES (NOW() - INTERVAL '2 hours');
+INSERT INTO ttl_schema_test_b.schema_sessions (created_at)
+VALUES (NOW() - INTERVAL '2 hours');
+SELECT ttl_create_index('ttl_schema_test_a.schema_sessions', 'created_at', 3600);
+ ttl_create_index 
+------------------
+ t
+(1 row)
+
+SET search_path = ttl_schema_test_b, public;
+SELECT ttl_runner();
+ ttl_runner 
+------------
+          1
+(1 row)
+
+RESET search_path;
+SELECT COUNT(*) AS rows_left_a FROM ttl_schema_test_a.schema_sessions;
+ rows_left_a 
+-------------
+           0
+(1 row)
+
+SELECT COUNT(*) AS rows_left_b FROM ttl_schema_test_b.schema_sessions;
+ rows_left_b 
+-------------
+           1
+(1 row)
+
+SELECT schema_name, table_name
+FROM ttl_index_table
+WHERE table_name = 'schema_sessions'
+ORDER BY schema_name;
+    schema_name    |   table_name    
+-------------------+-----------------
+ ttl_schema_test_a | schema_sessions
+(1 row)
+
+SELECT ttl_drop_index('ttl_schema_test_a.schema_sessions', 'created_at');
+ ttl_drop_index 
+----------------
+ t
+(1 row)
+
+DROP TABLE ttl_schema_test_a.schema_sessions;
+DROP TABLE ttl_schema_test_b.schema_sessions;
+DROP SCHEMA ttl_schema_test_a;
+DROP SCHEMA ttl_schema_test_b;
 -- Test complete
 SELECT 'All tests passed!' as result;
       result       

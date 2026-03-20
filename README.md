@@ -24,6 +24,8 @@ The `pg_ttl_index` extension provides automatic Time-To-Live (TTL) functionality
 - ✅ **Stats tracking** - Monitor rows deleted per table (v2.0+)
 - ✅ **Concurrency control** - Advisory locks prevent overlapping runs (v2.0+)
 - ✅ **Multiple tables support** - Different expiry times per table
+- ✅ **Schema-aware operations** - Supports schema-qualified table names (e.g. `app.sessions`)
+- ✅ **search_path hardening** - Function execution is protected from search_path hijacking
 - ✅ **Production ready** - ACID compliant with SQL injection protection
 
 ## Prerequisites
@@ -136,10 +138,10 @@ INSERT INTO user_sessions (user_id, session_data) VALUES
 ```sql
 -- Data expires after 1 hour (3600 seconds)
 -- Optional: specify batch_size for high-load tables (default: 10000)
-SELECT ttl_create_index('user_sessions', 'created_at', 3600);
+SELECT ttl_create_index('public.user_sessions', 'created_at', 3600);
 
 -- Or with custom batch size for high-volume tables
-SELECT ttl_create_index('user_sessions', 'created_at', 3600, 5000);
+SELECT ttl_create_index('public.user_sessions', 'created_at', 3600, 5000);
 ```
 
 ### 4. Verify TTL Index
@@ -170,7 +172,7 @@ CREATE TABLE sessions (
 );
 
 -- Sessions expire after 24 hours (batch size 5000 for high load)
-SELECT ttl_create_index('sessions', 'created_at', 86400, 5000);
+SELECT ttl_create_index('public.sessions', 'created_at', 86400, 5000);
 ```
 
 ### Example 2: Log Cleanup
@@ -186,7 +188,7 @@ CREATE TABLE app_logs (
 );
 
 -- Logs expire after 7 days
-SELECT ttl_create_index('app_logs', 'logged_at', 604800);
+SELECT ttl_create_index('public.app_logs', 'logged_at', 604800);
 ```
 
 ### Example 3: Cache Management
@@ -200,7 +202,7 @@ CREATE TABLE cache_entries (
 );
 
 -- Cache expires based on expires_at column
-SELECT ttl_create_index('cache_entries', 'expires_at', 0);
+SELECT ttl_create_index('public.cache_entries', 'expires_at', 0);
 ```
 
 ### Managing TTL Indexes
@@ -210,26 +212,30 @@ SELECT ttl_create_index('cache_entries', 'expires_at', 0);
 SELECT * FROM ttl_summary();
 
 -- Returns:
--- table_name, column_name, expire_after_seconds, batch_size,
+-- schema_name, table_name, column_name, expire_after_seconds, batch_size,
 -- active, last_run, time_since_last_run, rows_deleted_last_run,
 -- total_rows_deleted, index_name
 
 -- Update expiry time
-SELECT ttl_create_index('user_sessions', 'created_at', 7200); -- Change to 2 hours
+SELECT ttl_create_index('public.user_sessions', 'created_at', 7200); -- Change to 2 hours
 
 -- Disable TTL index (temporarily)
 UPDATE ttl_index_table
 SET active = false
-WHERE table_name = 'user_sessions' AND column_name = 'created_at';
+WHERE schema_name = 'public' AND table_name = 'user_sessions' AND column_name = 'created_at';
 
 -- Re-enable TTL index
 UPDATE ttl_index_table
 SET active = true
-WHERE table_name = 'user_sessions' AND column_name = 'created_at';
+WHERE schema_name = 'public' AND table_name = 'user_sessions' AND column_name = 'created_at';
 
 -- Remove TTL index completely (also drops the auto-created index)
-SELECT ttl_drop_index('user_sessions', 'created_at');
+SELECT ttl_drop_index('public.user_sessions', 'created_at');
 ```
+
+### Security Note
+
+For predictable behavior in multi-schema databases, always pass schema-qualified table names to `ttl_create_index()` and `ttl_drop_index()`, for example `app.sessions`.
 
 ## Background Worker Management
 
@@ -293,6 +299,7 @@ SELECT * FROM ttl_worker_status();
 ```sql
 -- Check deletion stats and last cleanup times
 SELECT
+    schema_name,
     table_name,
     rows_deleted_last_run,
     total_rows_deleted,

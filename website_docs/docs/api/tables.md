@@ -14,6 +14,7 @@ The main configuration and statistics table for TTL indexes.
 
 ```sql
 CREATE TABLE ttl_index_table (
+    schema_name TEXT NOT NULL DEFAULT 'public',
     table_name TEXT NOT NULL,
     column_name TEXT NOT NULL,
     expire_after_seconds INTEGER NOT NULL,
@@ -25,7 +26,8 @@ CREATE TABLE ttl_index_table (
     rows_deleted_last_run BIGINT DEFAULT 0,
     total_rows_deleted BIGINT DEFAULT 0,
     index_name TEXT,
-    PRIMARY KEY (table_name, column_name)
+    index_created_by_extension BOOLEAN NOT NULL DEFAULT false,
+    PRIMARY KEY (schema_name, table_name, column_name)
 );
 ```
 
@@ -33,6 +35,7 @@ CREATE TABLE ttl_index_table (
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
+| `schema_name` | TEXT | No | `public` | Schema containing the TTL-enabled table |
 | `table_name` | TEXT | No | - | Name of the table with TTL enabled  |
 | `column_name` | TEXT | No | - | Timestamp column name for expiration |
 | `expire_after_seconds` | INTEGER | No | - | Seconds before data expires |
@@ -44,10 +47,11 @@ CREATE TABLE ttl_index_table (
 | `rows_deleted_last_run` | BIGINT | Yes | `0` | Rows deleted in last cleanup |
 | `total_rows_deleted` | BIGINT | Yes | `0` | Total rows deleted all-time |
 | `index_name` | TEXT | Yes | `NULL` | Name of auto-created index |
+| `index_created_by_extension` | BOOLEAN | No | `false` | Whether the tracked index was created by `pg_ttl_index` |
 
 ### Primary Key
 
-`(table_name, column_name)` - Ensures one TTL configuration per table/column pair.
+`(schema_name, table_name, column_name)` - Ensures one TTL configuration per table/column pair per schema.
 
 ## Querying ttl_index_table
 
@@ -55,13 +59,13 @@ CREATE TABLE ttl_index_table (
 
 ```sql
 SELECT * FROM ttl_index_table
-ORDER BY table_name, column_name;
+ORDER BY schema_name, table_name, column_name;
 ```
 
 ### Active TTL Indexes Only
 
 ```sql
-SELECT table_name, column_name, expire_after_seconds
+SELECT schema_name, table_name, column_name, expire_after_seconds
 FROM ttl_index_table
 WHERE active = true;
 ```
@@ -70,6 +74,7 @@ WHERE active = true;
 
 ```sql
 SELECT 
+    schema_name,
     table_name,
     last_run,
     NOW() - last_run AS time_since_last,
@@ -83,6 +88,7 @@ ORDER BY last_run DESC;
 
 ```sql
 SELECT 
+    schema_name,
     table_name,
     total_rows_deleted,
     rows_deleted_last_run
@@ -103,7 +109,7 @@ Direct manipulation is for advanced users. Use the [API functions](functions.md)
 -- Disable cleanup without removing configuration
 UPDATE ttl_index_table
 SET active = false
-WHERE table_name = 'user_sessions';
+WHERE schema_name = 'public' AND table_name = 'user_sessions';
 ```
 
 ### Change Expiry Time
@@ -113,7 +119,8 @@ WHERE table_name = 'user_sessions';
 UPDATE ttl_index_table
 SET expire_after_seconds = 7200,  -- 2 hours
     updated_at = NOW()
-WHERE table_name = 'user_sessions'
+WHERE schema_name = 'public'
+  AND table_name = 'user_sessions'
   AND column_name = 'created_at';
 ```
 
@@ -123,7 +130,7 @@ WHERE table_name = 'user_sessions'
 -- Increase batch size for better performance
 UPDATE ttl_index_table
 SET batch_size = 50000
-WHERE table_name = 'app_logs';
+WHERE schema_name = 'public' AND table_name = 'app_logs';
 ```
 
 ### Reset Statistics
@@ -133,7 +140,7 @@ WHERE table_name = 'app_logs';
 UPDATE ttl_index_table
 SET rows_deleted_last_run = 0,
     total_rows_deleted = 0
-WHERE table_name = 'user_sessions';
+WHERE schema_name = 'public' AND table_name = 'user_sessions';
 ```
 
 ### Re-enable TTL
@@ -143,7 +150,7 @@ WHERE table_name = 'user_sessions';
 UPDATE ttl_index_table
 SET active = true,
     updated_at = NOW()
-WHERE table_name = 'user_sessions';
+WHERE schema_name = 'public' AND table_name = 'user_sessions';
 ```
 
 ## Monitoring Queries
@@ -152,6 +159,7 @@ WHERE table_name = 'user_sessions';
 
 ```sql
 SELECT 
+    schema_name,
     table_name,
     column_name,
     created_at,
@@ -166,6 +174,7 @@ WHERE last_run IS NULL
 ```sql
 -- Find tables where cleanup hasn't run recently
 SELECT 
+    schema_name,
     table_name,
     last_run,
     NOW() - last_run AS time_since_cleanup
@@ -180,6 +189,7 @@ ORDER BY last_run;
 ```sql
 -- Average rows deleted per run
 SELECT 
+    schema_name,
     table_name,
     total_rows_deleted,
     CASE 
@@ -196,7 +206,7 @@ WHERE active = true;
 
 ### Indexing Strategy
 
-The `ttl_index_table` itself is small (typically < 100 rows) and doesn't require additional indexes. The primary key on `(table_name, column_name)` provides efficient lookups.
+The `ttl_index_table` itself is small (typically < 100 rows) and doesn't require additional indexes. The primary key on `(schema_name, table_name, column_name)` provides efficient lookups.
 
 ### Statistics Tracking
 
@@ -220,13 +230,13 @@ Use [`ttl_create_index()`](functions.md#ttl_create_index) and [`ttl_drop_index()
 
 ❌ **Bad:**
 ```sql
-INSERT INTO ttl_index_table (table_name, column_name, expire_after_seconds)
-VALUES ('my_table', 'created_at', 3600);
+INSERT INTO ttl_index_table (schema_name, table_name, column_name, expire_after_seconds)
+VALUES ('public', 'my_table', 'created_at', 3600);
 ```
 
 ✅ **Good:**
 ```sql
-SELECT ttl_create_index('my_table', 'created_at', 3600);
+SELECT ttl_create_index('public.my_table', 'created_at', 3600);
 ```
 
 ### Use ttl_summary() for Monitoring

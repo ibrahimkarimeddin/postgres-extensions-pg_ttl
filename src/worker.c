@@ -2,11 +2,13 @@
 
 #include "access/xact.h"
 #include "executor/spi.h"
+#include "lib/stringinfo.h"
 #include "miscadmin.h"
 #include "pgstat.h"
 #include "postmaster/bgworker.h"
 #include "storage/ipc.h"
 #include "storage/latch.h"
+#include "utils/builtins.h"
 #include "utils/elog.h"
 #include "utils/guc.h"
 #include "utils/snapmgr.h"
@@ -29,6 +31,7 @@ static bool should_perform_cleanup(int wait_result);
 static bool can_perform_cleanup(void);
 static void perform_ttl_cleanup(void);
 static void handle_cleanup_error(void);
+static void execute_ttl_runner_in_extension_schema(void);
 
 static void ttl_sigterm_handler(SIGNAL_ARGS)
 {
@@ -135,8 +138,6 @@ static void perform_ttl_cleanup(void)
 {
     PG_TRY();
     {
-        int ret;
-
         StartTransactionCommand();
 
         if (SPI_connect() != SPI_OK_CONNECT)
@@ -144,13 +145,7 @@ static void perform_ttl_cleanup(void)
 
         PushActiveSnapshot(GetTransactionSnapshot());
 
-        ret = SPI_exec(
-            "SELECT 1 FROM pg_extension WHERE extname = '" TTL_EXTENSION_NAME
-            "'",
-            TTL_QUERY_LIMIT);
-        if (ret == SPI_OK_SELECT && SPI_processed > 0) {
-            SPI_exec("SELECT ttl_runner()", TTL_QUERY_LIMIT);
-        }
+        execute_ttl_runner_in_extension_schema();
 
         PopActiveSnapshot();
         SPI_finish();
@@ -161,6 +156,42 @@ static void perform_ttl_cleanup(void)
         handle_cleanup_error();
     }
     PG_END_TRY();
+}
+
+static void execute_ttl_runner_in_extension_schema(void)
+{
+    int ret;
+    char *schema_name = NULL;
+    StringInfoData query;
+
+    ret = SPI_exec("SELECT n.nspname "
+                   "FROM pg_catalog.pg_extension e "
+                   "JOIN pg_catalog.pg_namespace n ON n.oid = e.extnamespace "
+                   "WHERE e.extname = '" TTL_EXTENSION_NAME "'",
+                   TTL_QUERY_LIMIT);
+
+    if (ret != SPI_OK_SELECT)
+        ereport(ERROR,
+                (errmsg("TTL worker: failed to lookup extension schema")));
+
+    if (SPI_processed == 0)
+        return;
+
+    schema_name =
+        SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
+    if (schema_name == NULL || schema_name[0] == '\0')
+        ereport(ERROR,
+                (errmsg("TTL worker: extension schema lookup returned NULL")));
+
+    initStringInfo(&query);
+    appendStringInfo(&query, "SELECT %s.ttl_runner()",
+                     quote_identifier(schema_name));
+    ret = SPI_exec(query.data, TTL_QUERY_LIMIT);
+    pfree(query.data);
+
+    if (ret != SPI_OK_SELECT)
+        ereport(ERROR,
+                (errmsg("TTL worker: failed to execute ttl_runner()")));
 }
 
 static void handle_cleanup_error(void)
