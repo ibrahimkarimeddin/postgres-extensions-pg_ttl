@@ -26,6 +26,7 @@ CREATE TABLE ttl_index_table (
     rows_deleted_last_run BIGINT DEFAULT 0,
     total_rows_deleted BIGINT DEFAULT 0,
     index_name TEXT,
+    soft_delete_column TEXT,
     index_created_by_extension BOOLEAN NOT NULL DEFAULT false,
     PRIMARY KEY (schema_name, table_name, column_name)
 );
@@ -47,6 +48,7 @@ CREATE TABLE ttl_index_table (
 | `rows_deleted_last_run` | BIGINT | Yes | `0` | Rows deleted in last cleanup |
 | `total_rows_deleted` | BIGINT | Yes | `0` | Total rows deleted all-time |
 | `index_name` | TEXT | Yes | `NULL` | Name of auto-created index |
+| `soft_delete_column` | TEXT | Yes | `NULL` | Timestamp column used for soft delete mode |
 | `index_created_by_extension` | BOOLEAN | No | `false` | Whether the tracked index was created by `pg_ttl_index` |
 
 ### Primary Key

@@ -1,5 +1,12 @@
 Revision history for pg_ttl_index
 
+3.0.0   2026-03-20
+        - NEW: Optional soft-delete mode via ttl_create_index(..., soft_delete_column)
+        - NEW: ttl_runner() can mark rows as soft-deleted (timestamp) instead of hard delete
+        - NEW: ttl_summary() now includes soft_delete_column and cleanup_mode
+        - NEW: Validation for batch_size and expire_after_seconds in ttl_create_index()
+        - NEW: Validation that soft_delete_column exists and is timestamp/timestamptz
+
 2.0.1   (unreleased)
         - SECURITY: Added schema-aware TTL tracking (`schema_name`) and schema-qualified dynamic SQL
         - SECURITY: Hardened SQL/C function execution against search_path hijacking

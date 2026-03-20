@@ -224,6 +224,61 @@ DROP TABLE ttl_schema_test_a.schema_sessions;
 DROP TABLE ttl_schema_test_b.schema_sessions;
 DROP SCHEMA ttl_schema_test_a;
 DROP SCHEMA ttl_schema_test_b;
+-- Test 10: Soft delete mode should mark rows without hard delete
+CREATE TABLE test_soft_delete (
+    id SERIAL PRIMARY KEY,
+    payload TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
+);
+SELECT ttl_create_index('test_soft_delete', 'created_at', 3600, 1000, 'deleted_at');
+ ttl_create_index 
+------------------
+ t
+(1 row)
+
+INSERT INTO test_soft_delete (payload, created_at) VALUES
+    ('expired', NOW() - INTERVAL '2 hours'),
+    ('fresh', NOW());
+SELECT ttl_runner();
+ ttl_runner 
+------------
+          1
+(1 row)
+
+SELECT COUNT(*) AS soft_total_rows FROM test_soft_delete;
+ soft_total_rows 
+-----------------
+               2
+(1 row)
+
+SELECT COUNT(*) AS soft_marked_rows FROM test_soft_delete WHERE deleted_at IS NOT NULL;
+ soft_marked_rows 
+------------------
+                1
+(1 row)
+
+SELECT COUNT(*) AS soft_active_rows FROM test_soft_delete WHERE deleted_at IS NULL;
+ soft_active_rows 
+------------------
+                1
+(1 row)
+
+SELECT schema_name, table_name, soft_delete_column, cleanup_mode
+FROM ttl_summary()
+WHERE table_name = 'test_soft_delete';
+ schema_name |    table_name    | soft_delete_column | cleanup_mode 
+-------------+------------------+--------------------+--------------
+ public      | test_soft_delete | deleted_at         | soft_delete
+(1 row)
+
+SELECT ttl_drop_index('test_soft_delete', 'created_at');
+ ttl_drop_index 
+----------------
+ t
+(1 row)
+
+DROP TABLE test_soft_delete;
 -- Test complete
 SELECT 'All tests passed!' as result;
       result       

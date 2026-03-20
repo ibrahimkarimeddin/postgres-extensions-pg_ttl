@@ -12,6 +12,7 @@ CREATE TABLE ttl_index_table (
     rows_deleted_last_run BIGINT DEFAULT 0,
     total_rows_deleted BIGINT DEFAULT 0,
     index_name TEXT,
+    soft_delete_column TEXT,
     index_created_by_extension BOOLEAN NOT NULL DEFAULT false,
     PRIMARY KEY (schema_name, table_name, column_name)
 );
@@ -21,7 +22,8 @@ CREATE FUNCTION ttl_create_index(
     p_table_name TEXT,
     p_column_name TEXT,
     p_expire_after_seconds INTEGER,
-    p_batch_size INTEGER DEFAULT 10000
+    p_batch_size INTEGER DEFAULT 10000,
+    p_soft_delete_column TEXT DEFAULT NULL
 ) RETURNS BOOLEAN
 LANGUAGE plpgsql
 SET search_path FROM CURRENT
@@ -37,6 +39,7 @@ DECLARE
     v_table_schema TEXT;
     v_table_name TEXT;
     v_column_exists BOOLEAN;
+    v_soft_delete_typname TEXT;
 BEGIN
     IF p_table_name IS NULL OR p_table_name = '' THEN
         RAISE EXCEPTION 'Table name cannot be empty';
@@ -85,6 +88,32 @@ BEGIN
         RAISE EXCEPTION 'Column "%" does not exist on table %.%', p_column_name, v_table_schema, v_table_name;
     END IF;
 
+    IF p_soft_delete_column IS NOT NULL THEN
+        IF p_soft_delete_column = p_column_name THEN
+            RAISE EXCEPTION 'soft_delete_column cannot be the same as TTL column';
+        END IF;
+
+        SELECT t.typname
+        INTO v_soft_delete_typname
+        FROM pg_catalog.pg_attribute a
+        JOIN pg_catalog.pg_type t
+          ON t.oid = a.atttypid
+        WHERE a.attrelid = v_table_oid
+          AND a.attname = p_soft_delete_column
+          AND a.attnum > 0
+          AND NOT a.attisdropped;
+
+        IF v_soft_delete_typname IS NULL THEN
+            RAISE EXCEPTION 'Soft delete column "%" does not exist on table %.%',
+                            p_soft_delete_column, v_table_schema, v_table_name;
+        END IF;
+
+        IF v_soft_delete_typname NOT IN ('timestamp', 'timestamptz') THEN
+            RAISE EXCEPTION 'Soft delete column "%" must be timestamp or timestamptz',
+                            p_soft_delete_column;
+        END IF;
+    END IF;
+
     -- Create index name
     v_generated_idx_name := 'idx_ttl_' || v_table_name || '_' || p_column_name;
 
@@ -131,13 +160,15 @@ BEGIN
 
     -- Insert or update TTL configuration
     INSERT INTO ttl_index_table (schema_name, table_name, column_name, expire_after_seconds,
-                                 batch_size, index_name, index_created_by_extension, active, created_at)
+                                 batch_size, index_name, soft_delete_column,
+                                 index_created_by_extension, active, created_at)
     VALUES (v_table_schema, v_table_name, p_column_name, p_expire_after_seconds,
-            p_batch_size, v_idx_name, v_index_created_by_extension, true, NOW())
+            p_batch_size, v_idx_name, p_soft_delete_column, v_index_created_by_extension, true, NOW())
     ON CONFLICT (schema_name, table_name, column_name) DO UPDATE SET
         expire_after_seconds = p_expire_after_seconds,
         batch_size = p_batch_size,
         index_name = EXCLUDED.index_name,
+        soft_delete_column = EXCLUDED.soft_delete_column,
         index_created_by_extension = EXCLUDED.index_created_by_extension,
         active = true,
         updated_at = NOW();
@@ -218,7 +249,7 @@ DECLARE
     batch_deleted INTEGER;
     table_deleted BIGINT;
     total_deleted INTEGER := 0;
-    delete_query TEXT;
+    cleanup_query TEXT;
     start_time TIMESTAMPTZ;
     lock_acquired BOOLEAN;
 BEGIN
@@ -232,7 +263,7 @@ BEGIN
     start_time := pg_catalog.clock_timestamp();
 
     -- Process each table with its own error handling
-    FOR rec IN SELECT schema_name, table_name, column_name, expire_after_seconds, batch_size
+    FOR rec IN SELECT schema_name, table_name, column_name, expire_after_seconds, batch_size, soft_delete_column
                FROM ttl_index_table WHERE active = true
                ORDER BY schema_name, table_name, column_name
     LOOP
@@ -241,19 +272,38 @@ BEGIN
         BEGIN
             -- Batch deletion loop
             LOOP
-                -- Delete in batches using ctid for efficiency
-                delete_query := format(
-                    'DELETE FROM %I.%I WHERE ctid = ANY(ARRAY(
-                        SELECT ctid FROM %I.%I
-                        WHERE %I < pg_catalog.clock_timestamp() - pg_catalog.make_interval(secs => %s)
-                        LIMIT %s
-                    ))',
-                    rec.schema_name, rec.table_name,
-                    rec.schema_name, rec.table_name,
-                    rec.column_name, rec.expire_after_seconds, rec.batch_size
-                );
+                IF rec.soft_delete_column IS NULL THEN
+                    -- Hard delete mode
+                    cleanup_query := format(
+                        'DELETE FROM %I.%I WHERE ctid = ANY(ARRAY(
+                            SELECT ctid FROM %I.%I
+                            WHERE %I < pg_catalog.clock_timestamp() - pg_catalog.make_interval(secs => %s)
+                            LIMIT %s
+                        ))',
+                        rec.schema_name, rec.table_name,
+                        rec.schema_name, rec.table_name,
+                        rec.column_name, rec.expire_after_seconds, rec.batch_size
+                    );
+                ELSE
+                    -- Soft delete mode: mark rows once.
+                    cleanup_query := format(
+                        'UPDATE %I.%I
+                         SET %I = pg_catalog.clock_timestamp()
+                         WHERE ctid = ANY(ARRAY(
+                             SELECT ctid FROM %I.%I
+                             WHERE %I < pg_catalog.clock_timestamp() - pg_catalog.make_interval(secs => %s)
+                               AND %I IS NULL
+                             LIMIT %s
+                         ))',
+                        rec.schema_name, rec.table_name,
+                        rec.soft_delete_column,
+                        rec.schema_name, rec.table_name,
+                        rec.column_name, rec.expire_after_seconds,
+                        rec.soft_delete_column, rec.batch_size
+                    );
+                END IF;
 
-                EXECUTE delete_query;
+                EXECUTE cleanup_query;
                 GET DIAGNOSTICS batch_deleted = ROW_COUNT;
 
                 table_deleted := table_deleted + batch_deleted;
@@ -340,7 +390,9 @@ RETURNS TABLE(
     time_since_last_run INTERVAL,
     rows_deleted_last_run BIGINT,
     total_rows_deleted BIGINT,
-    index_name TEXT
+    index_name TEXT,
+    soft_delete_column TEXT,
+    cleanup_mode TEXT
 )
 LANGUAGE sql
 SET search_path FROM CURRENT
@@ -359,7 +411,12 @@ AS $$
         END as time_since_last_run,
         t.rows_deleted_last_run,
         t.total_rows_deleted,
-        t.index_name
+        t.index_name,
+        t.soft_delete_column,
+        CASE
+            WHEN t.soft_delete_column IS NULL THEN 'hard_delete'
+            ELSE 'soft_delete'
+        END AS cleanup_mode
     FROM ttl_index_table t
     ORDER BY t.schema_name, t.table_name, t.column_name;
 $$;

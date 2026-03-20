@@ -14,7 +14,7 @@
 
 ## Overview
 
-The `pg_ttl_index` extension provides automatic Time-To-Live (TTL) functionality for PostgreSQL tables. It automatically deletes expired data based on timestamp columns, helping you maintain clean databases without manual intervention.
+The `pg_ttl_index` extension provides automatic Time-To-Live (TTL) functionality for PostgreSQL tables. It automatically cleans expired data based on timestamp columns, either by hard deletion or optional soft deletion.
 
 ### Key Features
 - ✅ **Automatic data expiration** - Set it and forget it
@@ -23,6 +23,7 @@ The `pg_ttl_index` extension provides automatic Time-To-Live (TTL) functionality
 - ✅ **Auto-indexing** - Creates index on timestamp column automatically (v2.0+)
 - ✅ **Stats tracking** - Monitor rows deleted per table (v2.0+)
 - ✅ **Concurrency control** - Advisory locks prevent overlapping runs (v2.0+)
+- ✅ **Soft delete mode** - Mark rows with a timestamp column instead of removing them (v3.0+)
 - ✅ **Multiple tables support** - Different expiry times per table
 - ✅ **Schema-aware operations** - Supports schema-qualified table names (e.g. `app.sessions`)
 - ✅ **search_path hardening** - Function execution is protected from search_path hijacking
@@ -142,6 +143,9 @@ SELECT ttl_create_index('public.user_sessions', 'created_at', 3600);
 
 -- Or with custom batch size for high-volume tables
 SELECT ttl_create_index('public.user_sessions', 'created_at', 3600, 5000);
+
+-- Optional soft delete mode (requires nullable timestamp column, e.g. deleted_at)
+SELECT ttl_create_index('public.user_sessions', 'created_at', 3600, 5000, 'deleted_at');
 ```
 
 ### 4. Verify TTL Index

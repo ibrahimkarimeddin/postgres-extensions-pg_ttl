@@ -6,6 +6,19 @@ sidebar_position: 2
 
 Version history and release notes for `pg_ttl_index`.
 
+## Version 3.0.0 (2026-03-20)
+
+### ✨ New Features
+
+- **Soft delete mode** in `ttl_create_index()` via optional `soft_delete_column`
+- `ttl_runner()` now supports marking expired rows instead of hard deleting
+- `ttl_summary()` now returns `soft_delete_column` and `cleanup_mode`
+
+### 🔧 Improvements
+
+- Added validation for `batch_size` and `expire_after_seconds`
+- Added validation that `soft_delete_column` exists and is `timestamp`/`timestamptz`
+
 ## Version 2.0.0 (2026-01-01)
 
 ### 🎉 Major Release
@@ -161,7 +174,6 @@ Future versions may include:
 - **Cleanup scheduling** (specific time windows)
 - **Per-table cleanup frequency** override
 - **Integration with pg_cron** for advanced scheduling
-- **Soft delete** support (mark as deleted instead of removing)
 - **Data archival** before deletion
 
 Vote for features on [GitHub Discussions](https://github.com/ibrahimkarimeddin/postgres-extensions-pg_ttl/discussions)!

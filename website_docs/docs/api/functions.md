@@ -19,7 +19,8 @@ ttl_create_index(
     p_table_name TEXT,
     p_column_name TEXT,
     p_expire_after_seconds INTEGER,
-    p_batch_size INTEGER DEFAULT 10000
+    p_batch_size INTEGER DEFAULT 10000,
+    p_soft_delete_column TEXT DEFAULT NULL
 ) RETURNS BOOLEAN
 ```
 
@@ -31,6 +32,7 @@ ttl_create_index(
 | `p_column_name` | TEXT | Yes | Name of the timestamp column for expiration |
 | `p_expire_after_seconds` | INTEGER | Yes | Number of seconds before data expires |
 | `p_batch_size` | INTEGER | No | Rows to delete per batch (default: 10000) |
+| `p_soft_delete_column` | TEXT | No | Nullable timestamp/timestamptz column to mark soft deletes (e.g. `deleted_at`) |
 
 #### Return Value
 
@@ -47,6 +49,7 @@ ttl_create_index(
 4. **Idempotent** - Safe to call multiple times (updates configuration)
 5. **Schema-aware** - Stores normalized `schema_name` + `table_name` internally
 6. **Hardened execution** - Uses fixed function `search_path` to prevent search-path hijacking
+7. **Soft delete optional** - If `p_soft_delete_column` is provided, expired rows are marked instead of deleted
 
 #### Examples
 
@@ -72,6 +75,12 @@ SELECT ttl_create_index('public.cache_entries', 'expires_at', 0);
 ```sql
 -- Change expiry from 1 hour to 2 hours
 SELECT ttl_create_index('public.user_sessions', 'created_at', 7200);
+```
+
+**Soft delete mode:**
+```sql
+-- Mark expired rows instead of deleting them
+SELECT ttl_create_index('public.user_sessions', 'created_at', 3600, 10000, 'deleted_at');
 ```
 
 #### Error Handling
@@ -148,7 +157,9 @@ None.
 
 1. **Acquires advisory lock** to prevent concurrent runs
 2. **Processes each active TTL index** sequentially
-3. **Deletes expired rows in batches** according to configured batch size
+3. **Cleans expired rows in batches** according to configured batch size
+   - hard delete mode: `DELETE`
+   - soft delete mode: `UPDATE ... SET <soft_delete_column> = NOW()`
 4. **Updates statistics** (`rows_deleted_last_run`, `total_rows_deleted`)
 5. **Per-table error handling** - errors in one table don't affect others
 6. **Releases advisory lock** when complete
@@ -329,7 +340,9 @@ ttl_summary() RETURNS TABLE(
     time_since_last_run INTERVAL,
     rows_deleted_last_run BIGINT,
     total_rows_deleted BIGINT,
-    index_name TEXT
+    index_name TEXT,
+    soft_delete_column TEXT,
+    cleanup_mode TEXT
 )
 ```
 
@@ -352,6 +365,8 @@ None.
 | `rows_deleted_last_run` | BIGINT | Rows deleted in last run |
 | `total_rows_deleted` | BIGINT | Total rows deleted all-time |
 | `index_name` | TEXT | Name of the auto-created index |
+| `soft_delete_column` | TEXT | Soft-delete timestamp column if configured, else `NULL` |
+| `cleanup_mode` | TEXT | `hard_delete` or `soft_delete` |
 
 #### Examples
 
