@@ -317,16 +317,6 @@ xcode-select --install
 
 Windows support is experimental. Consider using WSL2 for development.
 
-## Upgrading
-
-### From v1.0.x to v2.0.0
-
-:::danger Breaking Changes
-Version 2.0.0 includes breaking changes to the `ttl_create_index()` function signature.
-:::
-
-See the [Migration Guide](advanced/migration.md) for detailed upgrade instructions.
-
 ## Next Steps
 
 Now that the extension is installed:

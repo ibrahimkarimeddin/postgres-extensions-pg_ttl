@@ -39,7 +39,7 @@ function HomepageHeader() {
             <div className={styles.badges}>
               <span className={styles.badge}>PostgreSQL 12+</span>
               <span className={styles.badge}>Production Ready</span>
-              <span className={styles.badge}>v2.0.0</span>
+              <span className={styles.badge}>v3.0.0</span>
             </div>
           </div>
           <div className={styles.heroCode}>
