@@ -177,8 +177,7 @@ static void execute_ttl_runner_in_extension_schema(void)
     if (SPI_processed == 0)
         return;
 
-    schema_name =
-        SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
+    schema_name = SPI_getvalue(SPI_tuptable->vals[0], SPI_tuptable->tupdesc, 1);
     if (schema_name == NULL || schema_name[0] == '\0')
         ereport(ERROR,
                 (errmsg("TTL worker: extension schema lookup returned NULL")));
@@ -190,8 +189,7 @@ static void execute_ttl_runner_in_extension_schema(void)
     pfree(query.data);
 
     if (ret != SPI_OK_SELECT)
-        ereport(ERROR,
-                (errmsg("TTL worker: failed to execute ttl_runner()")));
+        ereport(ERROR, (errmsg("TTL worker: failed to execute ttl_runner()")));
 }
 
 static void handle_cleanup_error(void)
