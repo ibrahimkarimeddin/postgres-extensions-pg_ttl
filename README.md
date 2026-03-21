@@ -124,7 +124,8 @@ CREATE TABLE user_sessions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     session_data JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
 );
 
 -- Insert some test data
@@ -172,11 +173,12 @@ CREATE TABLE sessions (
     session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id INTEGER NOT NULL,
     data JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
 );
 
 -- Sessions expire after 24 hours (batch size 5000 for high load)
-SELECT ttl_create_index('public.sessions', 'created_at', 86400, 5000);
+SELECT ttl_create_index('public.sessions', 'created_at', 86400, 5000, 'deleted_at');
 ```
 
 ### Example 2: Log Cleanup

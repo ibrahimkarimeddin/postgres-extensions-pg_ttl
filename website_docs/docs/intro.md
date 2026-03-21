@@ -62,17 +62,18 @@ CREATE TABLE user_sessions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     session_data JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
 );
 
 -- Start the background worker
 SELECT ttl_start_worker();
 
--- Set up TTL: data expires after 1 hour (3600 seconds)
-SELECT ttl_create_index('user_sessions', 'created_at', 3600);
+-- Set up TTL soft delete: mark expired rows in deleted_at after 1 hour
+SELECT ttl_create_index('public.user_sessions', 'created_at', 3600, 10000, 'deleted_at');
 
--- That's it! The background worker will automatically delete 
--- rows older than 1 hour every 60 seconds.
+-- That's it! The background worker will automatically mark
+-- rows older than 1 hour by setting deleted_at.
 ```
 
 ## Version History
