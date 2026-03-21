@@ -73,7 +73,7 @@ SELECT pg_reload_conf();
 **Solution 3**: Verify extension loaded
 ```sql
 \dx pg_ttl_index
--- Should show version 2.0.0
+-- Should show version 3.0.0
 ```
 
 ### Worker Crashes Immediately

@@ -137,31 +137,18 @@ Proof of concept release.
 
 ## Upgrade Path
 
-### From 1.0.x to 2.0.0
+### Version 3.0.0 Policy
 
-```sql
--- 1. Stop worker
-SELECT ttl_stop_worker();
-
--- 2. Restart PostgreSQL
-\! sudo systemctl restart postgresql
-
--- 3. Update extension
-ALTER EXTENSION pg_ttl_index UPDATE TO '2.0.0';
-
--- 4. Start worker
-SELECT ttl_start_worker();
-```
-
-See [Migration Guide](advanced/migration.md) for details.
+`3.0.0` is distributed as a clean release without SQL upgrade scripts from previous versions.
+Use a fresh install path for `3.0.0` deployments. See [Migration Guide](advanced/migration.md).
 
 ---
 
 ## Release Schedule
 
 - **Major versions** (x.0.0): Significant features, possible breaking changes
-- **Minor versions** (2.x.0): New features, backward compatible
-- **Patch versions** (2.0.x): Bug fixes only
+- **Minor versions** (x.y.0): New features, backward compatible
+- **Patch versions** (x.y.z): Bug fixes only
 
 ---
 
@@ -184,7 +171,8 @@ Vote for features on [GitHub Discussions](https://github.com/ibrahimkarimeddin/p
 
 | Extension Version | PostgreSQL Version | Status |
 |-------------------|-------------------|---------|
-| 2.0.0 | 12.0+ | ✅ Supported |
+| 3.0.0 | 12.0+ | ✅ Supported |
+| 2.0.0 | 12.0+ | ⚠️ Legacy |
 | 1.0.2 | 12.0+ | ⚠️ Deprecated |
 | 1.0 | 12.0+ | ❌ Unsupported |
 
@@ -198,5 +186,5 @@ Vote for features on [GitHub Discussions](https://github.com/ibrahimkarimeddin/p
 ## See Also
 
 - [Installation Guide](installation.md) - How to install/upgrade
-- [Migration Guide](advanced/migration.md) - v1→v2 migration
+- [Migration Guide](advanced/migration.md) - Migration and reinstall guidance
 - [API Reference](api/functions.md) - Function documentation

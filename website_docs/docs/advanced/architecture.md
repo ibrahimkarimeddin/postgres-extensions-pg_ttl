@@ -28,8 +28,8 @@ Understanding how `pg_ttl_index` works under the hood.
 │  │              ttl_runner() Function                  │ │
 │  │  ┌──────────────────────────────────────────────┐  │ │
 │  │  │  FOR EACH active TTL in ttl_index_table      │  │ │
-│  │  │    LOOP (batch deletion)                     │  │ │
-│  │  │      DELETE batch_size rows WHERE expired    │  │ │
+│  │  │    LOOP (batch cleanup)                      │  │ │
+│  │  │      DELETE or SOFT-DELETE expired rows      │  │ │
 │  │  │      UPDATE statistics                       │  │ │
 │  │  │      Sleep 10ms (yield to other processes)   │  │ │
 │  │  │      EXIT when no more expired rows          │  │ │
@@ -44,7 +44,7 @@ Understanding how `pg_ttl_index` works under the hood.
 
 ### 1. Extension SQL Objects
 
-**Location**: `pg_ttl_index--2.0.0.sql`
+**Location**: `pg_ttl_index--3.0.0.sql`
 
 - **`ttl_index_table`** - Configuration and statistics storage
   - Stores normalized `schema_name` + `table_name`
@@ -124,7 +124,7 @@ while (true) {
    
    b. LOOP (until no more expired rows):
       i.   SELECT ctid of expired rows (LIMIT batch_size)
-      ii.  DELETE rows with matching ctid
+      ii.  DELETE rows OR UPDATE soft-delete column
       iii. Update row counter
       iv.  Sleep 10ms (yield)
       v.   EXIT if deleted < batch_size

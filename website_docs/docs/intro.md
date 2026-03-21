@@ -24,23 +24,26 @@ Set up TTL rules once, and the extension handles the rest. No cron jobs, no manu
 ### ✅ Background Worker
 Runs cleanup at configurable intervals (default: 60 seconds). Automatically processes all tables with active TTL indexes.
 
-### ✅ High-Performance Batch Deletion (v2.0+)
+### ✅ High-Performance Batch Cleanup (v3.0+)
 - Configurable batch sizes (default: 10,000 rows)
 - Efficiently handles millions of rows
 - Uses `ctid` for optimal delete performance
 - Yields to other processes between batches
 
-### ✅ Auto-Indexing (v2.0+)
+### ✅ Auto-Indexing (v3.0+)
 Automatically creates indexes on timestamp columns for fast cleanup operations.
 
-### ✅ Stats Tracking (v2.0+)
+### ✅ Stats Tracking (v3.0+)
 - Monitor rows deleted per table
 - Track last cleanup time
 - View total deletion statistics
 - Built-in summary views
 
-### ✅ Concurrency Control (v2.0+)
+### ✅ Concurrency Control (v3.0+)
 Advisory locks prevent overlapping cleanup runs, ensuring safe operation in clustered environments.
+
+### ✅ Optional Soft Delete (v3.0+)
+Instead of hard-deleting expired rows, TTL can mark them with a nullable timestamp column (for example `deleted_at`).
 
 ### ✅ Multiple Tables Support
 Different expiry times per table - each table can have its own TTL configuration.
@@ -74,11 +77,12 @@ SELECT ttl_create_index('user_sessions', 'created_at', 3600);
 
 ## Version History
 
-### Version 2.0.0 (Current)
+### Version 3.0.0 (Current)
 - **Batch deletion** with configurable batch size
 - **Auto-indexing** of timestamp columns
 - **Stats tracking** (rows deleted per table)
 - **Advisory lock** concurrency control
+- **Optional soft delete** via `soft_delete_column`
 - Improved per-table error handling
 
 ### Version 1.0.x (Deprecated)

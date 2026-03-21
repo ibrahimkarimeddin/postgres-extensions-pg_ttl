@@ -10,7 +10,7 @@ Common questions about `pg_ttl_index`.
 
 ### What is pg_ttl_index?
 
-A PostgreSQL extension that automatically deletes expired data based on timestamp columns. Think of it as "auto-expire" for your database tables.
+A PostgreSQL extension that automatically cleans expired data based on timestamp columns, using either hard delete or optional soft delete mode.
 
 ### How is this different from just running DELETE queries?
 
@@ -25,11 +25,12 @@ PostgreSQL 12.0 and higher.
 
 ### Is it production-ready?
 
-Yes! Version 2.0.0 includes:
+Yes! Version 3.0.0 includes:
 - Batch deletion for high-load scenarios
 - Concurrency control via advisory locks
 - Per-table error handling
 - Comprehensive stats tracking
+- Optional soft delete mode via `soft_delete_column`
 
 ## Installation & Setup
 

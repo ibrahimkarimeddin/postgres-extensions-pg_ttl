@@ -28,7 +28,7 @@ Help improve `pg_ttl_index`! Contributions are welcome.
 ```markdown
 **Environment**:
 - PostgreSQL version: 16.1
-- pg_ttl_index version: 2.0.0
+- pg_ttl_index version: 3.0.0
 - Operating System: Ubuntu 22.04
 
 **Description**:
@@ -187,7 +187,7 @@ CREATE FUNCTION ttl_runner() RETURNS INTEGER LANGUAGE plpgsql AS $$ BEGIN FOR re
 make format
 
 # Check SQL syntax
-psql -d test -f pg_ttl_index--2.0.0.sql
+psql -d test -f pg_ttl_index--3.0.0.sql
 ```
 
 ## Testing

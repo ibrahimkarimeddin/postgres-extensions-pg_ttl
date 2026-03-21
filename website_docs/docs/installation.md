@@ -164,7 +164,7 @@ Expected output:
 ```
         Name        | Version |   Schema   |              Description
 --------------------+---------+------------+----------------------------------------
- pg_ttl_index      | 2.0.0   | public     | Automatic TTL for PostgreSQL tables
+ pg_ttl_index      | 3.0.0   | public     | Automatic TTL for PostgreSQL tables
 ```
 
 ### Step 3: Start the Background Worker
